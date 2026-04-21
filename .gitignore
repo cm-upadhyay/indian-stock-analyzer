@@ -1,0 +1,30 @@
+# secrets
+.env
+.env.prod
+.env.staging
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+
+# jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# data (don't commit analysis outputs)
+data/
+
+# docs (local only for now)
+docs/
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
