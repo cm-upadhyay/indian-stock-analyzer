@@ -14,6 +14,11 @@ dist/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
+# test artefacts
+.coverage
+htmlcov/
+.pytest_cache/
+
 # data (don't commit analysis outputs — /data anchors to project root only)
 /data/
 
