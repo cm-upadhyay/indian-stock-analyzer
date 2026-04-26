@@ -1,0 +1,40 @@
+# secrets — must never be baked into the image
+.env
+.env.*
+
+# git history — not needed at runtime, adds size
+.git/
+.gitignore
+
+# local dev artifacts
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+
+# tests — not shipped to Lambda
+tests/
+
+# docs and notebooks — not needed at runtime
+docs/
+notebooks/
+sample/
+
+# local data outputs — not needed at runtime
+data/
+
+# IDE
+.vscode/
+.idea/
+
+# CI / tooling config — not needed at runtime
+.github/
+.pre-commit-config.yaml
+Makefile
+docker-compose.yml
+scripts/
+
+# coverage artifacts
+.coverage
+htmlcov/
