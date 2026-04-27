@@ -1,0 +1,33 @@
+services:
+  api:
+    build: .
+    # Override the Lambda RIC entrypoint — CMD alone is not enough, the Lambda base
+    # image ENTRYPOINT intercepts it and treats CMD[0] as a handler name.
+    entrypoint: ["python", "-m", "uvicorn", "analyzer.api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      # src mount lets code changes take effect without a rebuild
+      - ./src:/var/task/src:ro
+      - ./data:/var/task/data
+    env_file:
+      - .env
+    environment:
+      - STORAGE_BACKEND=local
+      # /var/task/src — mounted source (analyzer package)
+      # /var/task     — pip --target install location (uvicorn, fastapi, etc.)
+      - PYTHONPATH=/var/task/src:/var/task
+
+  pipeline:
+    build: .
+    entrypoint: ["python", "-m", "analyzer", "--dry-run", "--symbols", "RELIANCE"]
+    volumes:
+      - ./src:/var/task/src:ro
+      - ./data:/var/task/data
+    env_file:
+      - .env
+    environment:
+      - STORAGE_BACKEND=local
+      - PYTHONPATH=/var/task/src:/var/task
+    profiles:
+      - pipeline
