@@ -23,7 +23,7 @@ def _get_recipients() -> list[str]:
     return [r.strip() for r in recipients.split(",") if r.strip()]
 
 
-def send_verdict_email(subject: str, body: str) -> None:
+def send_verdict_email(subject: str, body: str, html: bool = False) -> None:
     sender = os.getenv("GMAIL_SENDER", "")
     password = os.getenv("GMAIL_APP_PASSWORD", "")
     if not sender or not password:
@@ -35,7 +35,7 @@ def send_verdict_email(subject: str, body: str) -> None:
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = ", ".join(recipients)
-    msg.attach(MIMEText(body, "plain"))
+    msg.attach(MIMEText(body, "html" if html else "plain"))
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:

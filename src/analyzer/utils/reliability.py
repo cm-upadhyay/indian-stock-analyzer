@@ -58,6 +58,3 @@ def nse_breaker[**P, R](func: Callable[P, R]) -> Callable[P, R]:
 
 def openai_breaker[**P, R](func: Callable[P, R]) -> Callable[P, R]:
     return cast("Callable[P, R]", _openai_breaker(func))
-
-
-telegram_breaker = pybreaker.CircuitBreaker(fail_max=3, reset_timeout=30)

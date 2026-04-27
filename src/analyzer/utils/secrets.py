@@ -27,7 +27,7 @@ def load_secrets_from_ssm() -> None:
     try:
         import boto3  # provided by Lambda runtime; not required locally
 
-        client = boto3.client("ssm", region_name=os.getenv("AWS_REGION", "ap-south-1"))
+        client = boto3.client("ssm", region_name=os.getenv("AWS_REGION", "us-east-1"))
         paginator = client.get_paginator("get_parameters_by_path")
         loaded = 0
         for page in paginator.paginate(Path=_PREFIX, WithDecryption=True):

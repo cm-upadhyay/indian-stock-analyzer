@@ -12,8 +12,6 @@ import structlog
 from telegram import Bot
 from telegram.constants import ParseMode
 
-from analyzer.utils.reliability import telegram_breaker
-
 log = structlog.get_logger()
 
 
@@ -35,9 +33,7 @@ async def send_message(text: str, parse_mode: str = ParseMode.MARKDOWN) -> None:
         return
     for chat_id in chat_ids:
         try:
-            await telegram_breaker.call_async(
-                bot.send_message, chat_id=chat_id, text=text, parse_mode=parse_mode
-            )
+            await bot.send_message(chat_id=chat_id, text=text, parse_mode=parse_mode)
             log.info("telegram_sent", chat_id=chat_id)
         except Exception as e:
             log.error("telegram_send_failed", chat_id=chat_id, error=str(e))
