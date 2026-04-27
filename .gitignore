@@ -14,8 +14,13 @@ dist/
 .ipynb_checkpoints/
 *.ipynb_checkpoints
 
-# data (don't commit analysis outputs)
-data/
+# test artefacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# data (don't commit analysis outputs — /data anchors to project root only)
+/data/
 
 # docs (local only for now)
 docs/
@@ -28,3 +33,7 @@ docs/
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+.python-version
+response.json
+morning-response.json
