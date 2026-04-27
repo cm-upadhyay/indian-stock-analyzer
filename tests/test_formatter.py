@@ -1,7 +1,16 @@
 """Unit tests for llm/formatter.py — pure display logic, no I/O."""
 
-from analyzer.data.models import ScoringResult, StockVerdict
-from analyzer.llm.formatter import _to_int, format_telegram, format_verdict
+from datetime import date
+
+from analyzer.data.models import MorningNote, ScoringResult, StockVerdict
+from analyzer.llm.formatter import (
+    _to_int,
+    format_email_html,
+    format_morning_email_html,
+    format_telegram,
+    format_telegram_morning,
+    format_verdict,
+)
 
 
 def _make_scoring(grade: str = "LEAN BUY") -> ScoringResult:
@@ -146,3 +155,132 @@ class TestFormatTelegram:
         out = format_telegram("RELIANCE.NS", "Reliance", 1320.0, hold_v, _make_scoring("NEUTRAL"))
         # Entry/stop/target line should not appear for HOLD
         assert "Entry" not in out
+
+
+def _make_morning_note(status: str = "INTACT", signal: str = "BUY") -> MorningNote:
+    return MorningNote(
+        symbol="RELIANCE.NS",
+        company_name="Reliance Industries",
+        previous_signal=signal,
+        morning_text="Market opened flat; no material change to the thesis.",
+        status=status,
+    )
+
+
+def _make_stock(signal: str = "BUY") -> dict:
+    return {
+        "symbol": "RELIANCE.NS",
+        "company_name": "Reliance Industries",
+        "current_price": 1320.0,
+        "beta": 0.85,
+        "scoring": _make_scoring(),
+        "verdict": _make_verdict(signal),
+    }
+
+
+class TestFormatTelegramMorning:
+    def test_contains_company_and_status(self):
+        out = format_telegram_morning(_make_morning_note("INTACT", "BUY"))
+        assert "Reliance Industries" in out
+        assert "INTACT" in out
+        assert "BUY" in out
+
+    def test_weakened_shows_warning_icon(self):
+        out = format_telegram_morning(_make_morning_note("WEAKENED", "SELL"))
+        assert "⚠️" in out
+
+    def test_strengthened_shows_green_icon(self):
+        out = format_telegram_morning(_make_morning_note("STRENGTHENED", "BUY"))
+        assert "🟢" in out
+
+    def test_symbol_stripped_of_ns(self):
+        out = format_telegram_morning(_make_morning_note())
+        assert "RELIANCE.NS" not in out
+        assert "RELIANCE" in out
+
+    def test_morning_text_present(self):
+        out = format_telegram_morning(_make_morning_note())
+        assert "no material change" in out
+
+
+class TestFormatEmailHtml:
+    def test_html_contains_company_and_date(self):
+        html = format_email_html([_make_stock("BUY")], date(2024, 4, 26))
+        assert "Reliance Industries" in html
+        assert "26 Apr 2024" in html
+
+    def test_buy_shows_entry_and_stop(self):
+        html = format_email_html([_make_stock("BUY")], date(2024, 4, 26))
+        assert "1,350" in html
+        assert "1,260" in html
+
+    def test_hold_shows_no_trade_message(self):
+        hold_v = _make_verdict("HOLD").model_copy(update={"entry": None})
+        stock = {
+            "symbol": "INFY.NS",
+            "company_name": "Infosys",
+            "current_price": 1800.0,
+            "beta": None,
+            "scoring": _make_scoring("NEUTRAL"),
+            "verdict": hold_v,
+        }
+        html = format_email_html([stock], date(2024, 4, 26))
+        assert "No trade" in html
+
+    def test_summary_badges_for_all_signals(self):
+        stocks = [_make_stock("BUY"), _make_stock("HOLD"), _make_stock("SELL")]
+        html = format_email_html(stocks, date(2024, 4, 26))
+        assert "BUY" in html
+        assert "HOLD" in html
+        assert "SELL" in html
+
+    def test_signal_counts_in_header(self):
+        stocks = [_make_stock("BUY"), _make_stock("BUY"), _make_stock("SELL")]
+        html = format_email_html(stocks, date(2024, 4, 26))
+        assert "2 BUY" in html
+        assert "1 SELL" in html
+
+    def test_returns_valid_html_skeleton(self):
+        html = format_email_html([_make_stock()], date(2024, 4, 26))
+        assert html.startswith("<!DOCTYPE html>")
+        assert "</html>" in html
+
+    def test_no_beta_omits_beta_line(self):
+        stock = _make_stock("BUY")
+        stock["beta"] = None
+        html = format_email_html([stock], date(2024, 4, 26))
+        assert "Beta" not in html
+
+
+class TestFormatMorningEmailHtml:
+    def test_html_contains_date(self):
+        html = format_morning_email_html([_make_morning_note()], date(2024, 4, 27))
+        assert "27 Apr 2024" in html
+
+    def test_intact_group_present(self):
+        html = format_morning_email_html([_make_morning_note("INTACT")], date(2024, 4, 27))
+        assert "INTACT" in html
+
+    def test_mixed_statuses_all_groups_rendered(self):
+        notes = [
+            _make_morning_note("INTACT", "BUY"),
+            _make_morning_note("STRENGTHENED", "BUY"),
+            _make_morning_note("WEAKENED", "SELL"),
+        ]
+        html = format_morning_email_html(notes, date(2024, 4, 27))
+        assert "STRENGTHENED" in html
+        assert "WEAKENED" in html
+
+    def test_counts_in_header(self):
+        notes = [_make_morning_note("INTACT"), _make_morning_note("INTACT")]
+        html = format_morning_email_html(notes, date(2024, 4, 27))
+        assert "2" in html
+
+    def test_empty_group_omitted(self):
+        html = format_morning_email_html([_make_morning_note("INTACT")], date(2024, 4, 27))
+        assert "STRENGTHENED (0)" not in html
+
+    def test_returns_valid_html_skeleton(self):
+        html = format_morning_email_html([_make_morning_note()], date(2024, 4, 27))
+        assert html.startswith("<!DOCTYPE html>")
+        assert "</html>" in html
