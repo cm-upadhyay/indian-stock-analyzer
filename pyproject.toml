@@ -1,6 +1,6 @@
 [project]
 name = "indian-stock-analyzer"
-version = "0.2.0"
+version = "0.3.0"
 requires-python = ">=3.12"
 dependencies = [
     # Data
@@ -16,6 +16,7 @@ dependencies = [
     "langsmith>=0.1",
     # Models + validation
     "pydantic>=2.0",
+    "pydantic-settings>=2.0",
     "pyyaml>=6.0",
     "Jinja2>=3.1",
     # Reliability
@@ -33,6 +34,22 @@ dependencies = [
     "tavily-python>=0.3",
     # Env
     "python-dotenv>=1.0",
+    # Phase 3A — Intelligence hardening
+    # Task 3.1 — Hierarchical memory
+    "mem0ai>=0.1",
+    "chromadb>=0.5",
+    # Task 3.7 — DataFrame validation
+    "pandera>=0.20",
+    # Task 3.9 — Schema-level guardrails
+    "guardrails-ai>=0.5",
+    # Task 3.10 — Policy-level guardrails
+    "nemoguardrails>=0.9",
+    # Task 3.12 — Input security
+    "llm-guard>=0.3",
+    "presidio-analyzer>=2.2",
+    "presidio-anonymizer>=2.2",
+    # Task 3.3/3.4 — MCP server + tools
+    "mcp>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -112,4 +129,13 @@ omit = [
     "src/analyzer/utils/reliability.py",
     "src/analyzer/utils/storage.py",
     "src/analyzer/utils/logging.py",
+    # Phase 3A — omit modules that require external services (Mem0, NeMo, LLM Guard)
+    "src/analyzer/memory/store.py",
+    "src/analyzer/guardrails/nemo_rails/rails.py",
+    "src/analyzer/security/input_guard.py",
+    "src/analyzer/hitl/approver.py",
+    "src/analyzer/llm/agent.py",
+    "src/analyzer/llm/reviewer.py",
+    "src/analyzer/outcomes/tracker.py",
+    "src/mcp_server/*",
 ]
