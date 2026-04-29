@@ -41,6 +41,49 @@ def _validate_env(dry_run: bool) -> list[str]:
     return [k for k in required if not os.getenv(k)]
 
 
+def _backfill_pending_outcomes(today_symbols: list[str]) -> None:
+    """Evaluate outcomes for verdicts from the last 10 days that haven't been scored yet.
+
+    Stocks not picked by today's screener never enter the per-symbol pipeline, so
+    their past verdicts would go unscored forever. This pre-batch scan closes that gap:
+    for every verdict in the last 10 days that has no OutcomeRecord yet, we fetch the
+    current price via yfinance and score it now.
+
+    Called once at the start of _run_4pm(), before the per-symbol loop.
+    Only yfinance calls are added (free). No Tavily, no main LLM call.
+    """
+    from datetime import date, timedelta
+
+    import yfinance as yf
+
+    from analyzer.outcomes.tracker import check_and_store_outcome
+    from analyzer.utils.storage import AnalysisStore, OutcomeStore
+
+    analysis_store = AnalysisStore()
+    outcome_store = OutcomeStore()
+    today = date.today()
+
+    for days_back in range(1, 11):
+        check_date = today - timedelta(days=days_back)
+        pairs = analysis_store.load_all(check_date)
+        for sym, _ in pairs:
+            if sym in today_symbols:
+                continue  # will be handled inside the pipeline
+            if outcome_store.load(str(check_date), sym) is not None:
+                continue  # already scored
+            try:
+                price = yf.Ticker(sym).fast_info.last_price or 0.0
+                if price > 0:
+                    outcome = check_and_store_outcome(sym, price)
+                    if outcome:
+                        from analyzer.memory.store import MemoryStore
+
+                        MemoryStore().add_outcome_result(sym, outcome)
+                        log.info("backfill_outcome", symbol=sym, verdict_date=str(check_date))
+            except Exception as e:
+                log.warning("backfill_outcome_failed", symbol=sym, error=str(e))
+
+
 def _run_4pm(symbols: list[str], dry_run: bool, no_notify: bool) -> None:
     from analyzer.llm.formatter import format_telegram, format_verdict
     from analyzer.notify import telegram as tg
@@ -48,6 +91,8 @@ def _run_4pm(symbols: list[str], dry_run: bool, no_notify: bool) -> None:
     from analyzer.pipeline.graph_4pm import run_4pm
 
     log.info("4pm_pipeline_start", symbols=symbols, dry_run=dry_run)
+
+    _backfill_pending_outcomes(symbols)
 
     for symbol in symbols:
         log.info("analyzing", symbol=symbol)
@@ -84,6 +129,16 @@ def _run_4pm(symbols: list[str], dry_run: bool, no_notify: bool) -> None:
                 subject=f"[{state.verdict.signal}] {state.stock.company_name} — {date.today()}",
                 body=terminal_output,
             )
+
+    # Post-batch: extract cross-stock patterns from accumulated outcomes.
+    # One gpt-4o-mini call per day. Skipped automatically if <5 outcomes exist.
+    if not dry_run:
+        try:
+            from analyzer.memory.store import MemoryStore
+
+            MemoryStore().extract_and_store_patterns()
+        except Exception as e:
+            log.warning("pattern_extraction_failed", error=str(e))
 
 
 def _run_morning(symbols: list[str], dry_run: bool, no_notify: bool) -> None:

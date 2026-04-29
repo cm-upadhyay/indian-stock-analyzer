@@ -23,7 +23,7 @@ from mangum import Mangum
 from pydantic import BaseModel
 
 from analyzer.utils.logging import configure_logging
-from analyzer.utils.storage import AnalysisStore
+from analyzer.utils.storage import AnalysisStore, MorningNoteStore
 
 load_dotenv()  # no-op on Lambda (vars come from env); loads .env in local dev
 configure_logging()
@@ -33,7 +33,7 @@ from analyzer.utils.secrets import load_secrets_from_ssm  # noqa: E402
 
 load_secrets_from_ssm()
 
-app = FastAPI(title="Indian Stock Analyzer API", version="2.0.0")
+app = FastAPI(title="Indian Stock Analyzer API", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,6 +71,7 @@ async def log_requests(request: Request, call_next):  # type: ignore[no-untyped-
 
 
 _store = AnalysisStore()
+_morning_store = MorningNoteStore()
 
 
 # ── Response models ───────────────────────────────────────────────────────────
@@ -108,6 +109,36 @@ class StockResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     checks: dict[str, str]
+
+
+class MorningNoteOut(BaseModel):
+    symbol: str
+    company_name: str
+    previous_signal: str
+    status: str  # INTACT | WEAKENED | STRENGTHENED
+    morning_text: str
+
+
+class MorningResponse(BaseModel):
+    date: str
+    count: int
+    notes: list[MorningNoteOut]
+
+
+class AccuracyBySignal(BaseModel):
+    total: int
+    correct: int
+    accuracy_pct: float
+
+
+class AccuracyResponse(BaseModel):
+    period_days: int
+    total: int
+    correct: int
+    accuracy_pct: float
+    target_hit_pct: float
+    stop_triggered_pct: float
+    by_signal: dict[str, AccuracyBySignal]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -195,6 +226,78 @@ def get_stock(
         found=verdict is not None,
         verdict=_to_verdict_out(symbol, verdict) if verdict else None,
     )
+
+
+@app.get("/morning", response_model=MorningResponse)
+def morning(
+    run_date: str | None = None,
+    _: None = Security(_require_api_key),
+) -> MorningResponse:
+    """All morning notes for a given date. Added in Phase 3A (Task 3.18 prep)."""
+    target = _parse_date(run_date)
+    records = _morning_store.load_all(str(target))
+    return MorningResponse(
+        date=str(target),
+        count=len(records),
+        notes=[
+            MorningNoteOut(
+                symbol=r.symbol,
+                company_name=r.company_name,
+                previous_signal=r.previous_signal,
+                status=r.status,
+                morning_text=r.morning_text,
+            )
+            for r in records
+        ],
+    )
+
+
+@app.get("/accuracy", response_model=AccuracyResponse)
+def accuracy(_: None = Security(_require_api_key)) -> AccuracyResponse:
+    """Running accuracy stats for the last 30 days. Added in Phase 3A (Task 3.2)."""
+    from analyzer.outcomes.tracker import load_accuracy_stats
+
+    stats = load_accuracy_stats()
+
+    by_signal_raw = stats.get("by_signal", {})
+    by_signal: dict[str, AccuracyBySignal] = {}
+    for sig, data in by_signal_raw.items():
+        if isinstance(data, dict):
+            by_signal[sig] = AccuracyBySignal(
+                total=int(data.get("total", 0)),
+                correct=int(data.get("correct", 0)),
+                accuracy_pct=float(data.get("accuracy_pct", 0.0)),
+            )
+
+    return AccuracyResponse(
+        period_days=30,
+        total=int(stats.get("total", 0)),
+        correct=int(stats.get("correct", 0)),
+        accuracy_pct=float(stats.get("accuracy_pct", 0.0)),
+        target_hit_pct=float(stats.get("target_hit_pct", 0.0)),
+        stop_triggered_pct=float(stats.get("stop_triggered_pct", 0.0)),
+        by_signal=by_signal,
+    )
+
+
+@app.post("/hitl/approve/{thread_id}")
+def hitl_approve(thread_id: str, _: None = Security(_require_api_key)) -> dict:  # type: ignore[type-arg]
+    """Record an admin approval for a HITL-paused verdict. Called by the Telegram button URL."""
+    from analyzer.hitl.approver import record_decision
+
+    record_decision(thread_id, approved=True)
+    log.info("hitl_approve_endpoint", thread_id=thread_id)
+    return {"status": "approved", "thread_id": thread_id}
+
+
+@app.post("/hitl/reject/{thread_id}")
+def hitl_reject(thread_id: str, _: None = Security(_require_api_key)) -> dict:  # type: ignore[type-arg]
+    """Record an admin rejection for a HITL-paused verdict. Called by the Telegram button URL."""
+    from analyzer.hitl.approver import record_decision
+
+    record_decision(thread_id, approved=False)
+    log.info("hitl_reject_endpoint", thread_id=thread_id)
+    return {"status": "rejected", "thread_id": thread_id}
 
 
 # Lambda handler
