@@ -22,6 +22,7 @@ _ENV_PINS_KEY = "PROMPT_VERSION_{name}"
 _DEFAULT_VERSIONS: dict[str, str] = {
     "analysis": "v1",
     "morning": "v1",
+    "reflection": "v1",  # Phase 3A — reviewer prompt
 }
 
 

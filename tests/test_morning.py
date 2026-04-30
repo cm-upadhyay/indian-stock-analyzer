@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from analyzer.data.models import NewsItem
 from analyzer.data.news import fetch_news, format_news_context
 from analyzer.llm.morning import _extract_status
@@ -47,17 +49,23 @@ def test_extract_status_intact_takes_first_match():
 def _make_raw_news(title: str, summary: str = "", publisher: str = "Test") -> dict:
     """Build a yfinance-style news item (new format with nested 'content')."""
     return {
+        "providerPublishTime": int(time.time()),
         "content": {
             "title": title,
             "summary": summary,
             "provider": {"displayName": publisher},
-        }
+        },
     }
 
 
 def _make_legacy_news(title: str, summary: str = "", publisher: str = "Test") -> dict:
     """Build a yfinance-style news item (old flat format)."""
-    return {"title": title, "description": summary, "publisher": publisher}
+    return {
+        "providerPublishTime": int(time.time()),
+        "title": title,
+        "description": summary,
+        "publisher": publisher,
+    }
 
 
 def test_fetch_news_uses_nested_content_format(monkeypatch):

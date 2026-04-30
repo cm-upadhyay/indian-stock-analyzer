@@ -1,0 +1,30 @@
+# NeMo Guardrails configuration for the Indian Stock Analyzer
+#
+# What NeMo Guardrails adds on top of Guardrails AI:
+#   Guardrails AI = field-level rules ("is the stop-loss in the right range?")
+#   NeMo          = system-level policies ("never recommend a stock not on NSE")
+#
+# NeMo sits as middleware around LangGraph invocations. It reads Colang flow files
+# (flows.co) and enforces them regardless of what the LLM decides to output.
+#
+# This config tells NeMo which LLM to use for its own rail-checking calls.
+# We use the same gpt-4o-mini as the main pipeline (via LiteLLM).
+
+models:
+  - type: main
+    engine: openai
+    model: gpt-4o-mini
+
+# The flows and input/output actions are defined in flows.co
+rails:
+  input:
+    flows:
+      - check adversarial news input
+  output:
+    flows:
+      - check verdict output policy
+
+# Logging: write rail events to structlog (picked up by our existing log pipeline)
+logging:
+  enabled: true
+  log_level: WARNING
