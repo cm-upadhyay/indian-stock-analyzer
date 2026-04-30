@@ -68,6 +68,19 @@ def node_publish_morning(state: MorningState) -> MorningState:
     if state.morning_note is None:
         return state
     log.info("publish_morning", symbol=state.symbol, status=state.morning_note.status)
+
+    # Task 3.18 prep: Save morning note to S3/local so the /morning API endpoint can serve it
+    # and the dashboard can show the morning follow-up section
+    try:
+        from analyzer.data.models import MorningNoteRecord
+        from analyzer.utils.storage import MorningNoteStore
+
+        record = MorningNoteRecord.from_note(state.morning_note, str(state.run_date))
+        MorningNoteStore().save(str(state.run_date), state.symbol, record)
+        log.info("morning_note_saved", symbol=state.symbol, date=str(state.run_date))
+    except Exception as e:
+        log.warning("morning_note_save_failed", symbol=state.symbol, error=str(e))
+
     # Notification (Telegram/email) is handled by the caller after the graph returns
     return state
 

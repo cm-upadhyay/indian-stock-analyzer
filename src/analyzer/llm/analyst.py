@@ -19,6 +19,7 @@ from analyzer.data.models import (
     TechnicalSignals,
 )
 from analyzer.llm.prompt_library import PromptLibrary
+from analyzer.memory.context import MemoryContext
 
 log = structlog.get_logger()
 
@@ -125,12 +126,17 @@ def call_analyst(
     news_context: str,
     corporate: CorporateEvents,
     macro: MacroContext | None = None,
+    memory_context: MemoryContext | None = None,
 ) -> StockVerdict:
     log.info("call_analyst_start", symbol=stock.symbol)
     system_prompt = PromptLibrary.get("analysis")
-    user_message = _build_user_message(
+
+    # Prepend memory context block to the user message (Task 3.1)
+    mem_block = memory_context.to_prompt_block() if memory_context else ""
+    raw_user_message = _build_user_message(
         stock, tech, fund, india, scoring, news, news_context, corporate, macro
     )
+    user_message = f"{mem_block}\n\n{raw_user_message}" if mem_block else raw_user_message
 
     content, input_tok, output_tok = llm_adapter.chat_completion(
         messages=[
