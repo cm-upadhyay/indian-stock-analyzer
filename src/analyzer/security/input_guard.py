@@ -60,7 +60,7 @@ def _get_presidio():  # type: ignore[no-untyped-def]
         from presidio_anonymizer import AnonymizerEngine
 
         _presidio_imported = True
-        return AnalyzerEngine(), AnonymizerEngine()  # type: ignore[no-untyped-call]
+        return AnalyzerEngine(), AnonymizerEngine()
     except ImportError:
         if not _presidio_imported:
             log.warning(
