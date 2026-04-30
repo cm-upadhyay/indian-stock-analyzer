@@ -14,7 +14,7 @@ ENV UV_LINK_MODE=copy
 # --target installs flat into /var/task, which Lambda adds to PYTHONPATH.
 # --no-emit-workspace excludes the local 'analyzer' package (copied separately below).
 COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-emit-workspace --no-dev -o /tmp/requirements.txt && \
+RUN uv export --frozen --no-emit-workspace --no-dev --no-group local -o /tmp/requirements.txt && \
     uv pip install -r /tmp/requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
 # Copy application source — Lambda needs PYTHONPATH to include /var/task/src
