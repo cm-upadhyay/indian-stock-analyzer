@@ -246,6 +246,10 @@ class StockVerdict(BaseModel):
     input_tokens: int = 0
     output_tokens: int = 0
 
+    # Phase 3A: whether reflection reviewed this verdict
+    reflection_checked: bool = False
+    reflection_overrode: bool = False
+
 
 class MorningNote(BaseModel):
     """2–3 sentence morning update from the 8 AM LLM call."""
@@ -257,3 +261,54 @@ class MorningNote(BaseModel):
     status: str  # INTACT | WEAKENED | STRENGTHENED
     input_tokens: int = 0
     output_tokens: int = 0
+
+
+# ── Phase 3A additions ────────────────────────────────────────────────────────
+
+
+class OutcomeRecord(BaseModel):
+    """Tracks whether a past verdict played out correctly.
+
+    Stored under outcomes/{verdict_date}/{symbol}.json.
+    The /accuracy API endpoint reads these to compute running accuracy stats.
+    """
+
+    verdict_date: str  # ISO date when the verdict was produced
+    symbol: str
+    predicted_signal: str  # BUY | SELL | HOLD
+    predicted_confidence: float
+    predicted_entry: int | None
+    predicted_target: int | None
+    predicted_stop: int | None
+
+    # Filled in the next trading day when we check actual price
+    outcome_date: str | None = None
+    actual_price: float | None = None
+    direction_correct: bool | None = None  # None for HOLD (no direction to check)
+    target_hit: bool | None = None
+    stop_triggered: bool | None = None
+
+
+class MorningNoteRecord(BaseModel):
+    """Storage-ready morning note — saved to S3 and served by GET /morning.
+
+    Wraps MorningNote with a date field so the API can index by date.
+    """
+
+    date: str  # ISO date e.g. "2025-04-27"
+    symbol: str
+    company_name: str
+    previous_signal: str
+    morning_text: str
+    status: str  # INTACT | WEAKENED | STRENGTHENED
+
+    @classmethod
+    def from_note(cls, note: MorningNote, run_date: str) -> MorningNoteRecord:
+        return cls(
+            date=run_date,
+            symbol=note.symbol,
+            company_name=note.company_name,
+            previous_signal=note.previous_signal,
+            morning_text=note.morning_text,
+            status=note.status,
+        )
