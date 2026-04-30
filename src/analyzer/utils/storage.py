@@ -13,7 +13,7 @@ from pathlib import Path
 
 import structlog
 
-from analyzer.data.models import StockVerdict
+from analyzer.data.models import MorningNoteRecord, OutcomeRecord, StockVerdict
 
 log = structlog.get_logger()
 
@@ -104,4 +104,152 @@ class AnalysisStore:
                     results.append((symbol, StockVerdict.model_validate_json(raw)))
         except Exception as e:
             log.error("s3_list_failed", prefix=prefix, error=str(e))
+        return results
+
+
+class OutcomeStore:
+    """Read/write outcome records keyed by (verdict_date, symbol).
+
+    S3 path:   outcomes/{verdict_date}/{symbol}.json
+    Local path: data/outcomes/{verdict_date}/{symbol}.json
+    """
+
+    def save(self, verdict_date: str, symbol: str, outcome: OutcomeRecord) -> None:
+        data = outcome.model_dump()
+        if _backend() == "s3":
+            self._s3_put(f"outcomes/{verdict_date}/{symbol}.json", data)
+        else:
+            path = _LOCAL_ROOT / "outcomes" / verdict_date / f"{symbol}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, indent=2))
+
+    def load(self, verdict_date: str, symbol: str) -> OutcomeRecord | None:
+        if _backend() == "s3":
+            raw = self._s3_get(f"outcomes/{verdict_date}/{symbol}.json")
+        else:
+            path = _LOCAL_ROOT / "outcomes" / verdict_date / f"{symbol}.json"
+            raw = path.read_text() if path.exists() else None
+        if raw is None:
+            return None
+        return OutcomeRecord.model_validate_json(raw)
+
+    def load_all(self, verdict_date: str) -> list[OutcomeRecord]:
+        """Load all outcomes for a given date."""
+        if _backend() == "s3":
+            return self._s3_load_all_outcomes(verdict_date)
+        results: list[OutcomeRecord] = []
+        day_dir = _LOCAL_ROOT / "outcomes" / verdict_date
+        if not day_dir.exists():
+            return results
+        for f in day_dir.glob("*.json"):
+            try:
+                results.append(OutcomeRecord.model_validate_json(f.read_text()))
+            except Exception as e:
+                log.warning("outcome_store_corrupt", path=str(f), error=str(e))
+        return results
+
+    def _s3_put(self, key: str, data: dict) -> None:  # type: ignore[type-arg]
+        import boto3
+
+        boto3.client("s3").put_object(
+            Bucket=_s3_bucket(), Key=key, Body=json.dumps(data), ContentType="application/json"
+        )
+
+    def _s3_get(self, key: str) -> str | None:
+        import boto3
+
+        try:
+            resp = boto3.client("s3").get_object(Bucket=_s3_bucket(), Key=key)
+            return resp["Body"].read().decode()
+        except Exception as e:
+            log.warning("s3_outcome_get_failed", key=key, error=str(e))
+            return None
+
+    def _s3_load_all_outcomes(self, verdict_date: str) -> list[OutcomeRecord]:
+        import boto3
+
+        prefix = f"outcomes/{verdict_date}/"
+        results: list[OutcomeRecord] = []
+        try:
+            resp = boto3.client("s3").list_objects_v2(Bucket=_s3_bucket(), Prefix=prefix)
+            for obj in resp.get("Contents", []):
+                raw = self._s3_get(obj["Key"])
+                if raw:
+                    results.append(OutcomeRecord.model_validate_json(raw))
+        except Exception as e:
+            log.error("s3_outcome_list_failed", prefix=prefix, error=str(e))
+        return results
+
+
+class MorningNoteStore:
+    """Read/write morning note records keyed by (date, symbol).
+
+    S3 path:    morning-notes/{date}/{symbol}.json
+    Local path: data/morning-notes/{date}/{symbol}.json
+    """
+
+    def save(self, run_date: str, symbol: str, record: MorningNoteRecord) -> None:
+        data = record.model_dump()
+        if _backend() == "s3":
+            self._s3_put(f"morning-notes/{run_date}/{symbol}.json", data)
+        else:
+            path = _LOCAL_ROOT / "morning-notes" / run_date / f"{symbol}.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(data, indent=2))
+
+    def load(self, run_date: str, symbol: str) -> MorningNoteRecord | None:
+        if _backend() == "s3":
+            raw = self._s3_get(f"morning-notes/{run_date}/{symbol}.json")
+        else:
+            path = _LOCAL_ROOT / "morning-notes" / run_date / f"{symbol}.json"
+            raw = path.read_text() if path.exists() else None
+        if raw is None:
+            return None
+        return MorningNoteRecord.model_validate_json(raw)
+
+    def load_all(self, run_date: str) -> list[MorningNoteRecord]:
+        """Load all morning notes for a given date."""
+        if _backend() == "s3":
+            return self._s3_load_all_notes(run_date)
+        results: list[MorningNoteRecord] = []
+        day_dir = _LOCAL_ROOT / "morning-notes" / run_date
+        if not day_dir.exists():
+            return results
+        for f in day_dir.glob("*.json"):
+            try:
+                results.append(MorningNoteRecord.model_validate_json(f.read_text()))
+            except Exception as e:
+                log.warning("morning_note_store_corrupt", path=str(f), error=str(e))
+        return results
+
+    def _s3_put(self, key: str, data: dict) -> None:  # type: ignore[type-arg]
+        import boto3
+
+        boto3.client("s3").put_object(
+            Bucket=_s3_bucket(), Key=key, Body=json.dumps(data), ContentType="application/json"
+        )
+
+    def _s3_get(self, key: str) -> str | None:
+        import boto3
+
+        try:
+            resp = boto3.client("s3").get_object(Bucket=_s3_bucket(), Key=key)
+            return resp["Body"].read().decode()
+        except Exception as e:
+            log.warning("s3_morning_note_get_failed", key=key, error=str(e))
+            return None
+
+    def _s3_load_all_notes(self, run_date: str) -> list[MorningNoteRecord]:
+        import boto3
+
+        prefix = f"morning-notes/{run_date}/"
+        results: list[MorningNoteRecord] = []
+        try:
+            resp = boto3.client("s3").list_objects_v2(Bucket=_s3_bucket(), Prefix=prefix)
+            for obj in resp.get("Contents", []):
+                raw = self._s3_get(obj["Key"])
+                if raw:
+                    results.append(MorningNoteRecord.model_validate_json(raw))
+        except Exception as e:
+            log.error("s3_morning_note_list_failed", prefix=prefix, error=str(e))
         return results
