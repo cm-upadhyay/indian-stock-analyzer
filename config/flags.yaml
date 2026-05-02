@@ -1,0 +1,33 @@
+# Feature flags — Phase 3C (Task 3.16).
+# Flip any flag here; change takes effect on next invocation (no redeploy needed).
+# Phase 4: these move to Flipt; config/flags.yaml becomes the local fallback only.
+#
+# Override at runtime without touching this file:
+#   FLAG_ENABLE_HITL=true         (env var — Lambda, ECS, local)
+#   FLAG_ENABLE_REFLECTION=false  (env var)
+
+flags:
+  # ── Core pipeline behaviour ───────────────────────────────────────────────
+  enable_reflection: true           # smart-triggered reviewer pass (Phase 3A Task 3.8)
+  enable_hitl: false                # human approval gate (Phase 3A Task 3.11) — off until ECS HITL ready
+  enable_agentic_mode: true         # LLM-driven tool selection (Phase 3A Task 3.5)
+  enable_semantic_cache: true       # skip identical LLM calls (Phase 3C Task 3.17)
+
+  # ── Safety layers ─────────────────────────────────────────────────────────
+  input_guard_enabled: true         # LLM Guard prompt-injection scan (Phase 3A Task 3.12)
+  guardrails_enabled: true          # Guardrails AI schema validators (Phase 3A Task 3.9)
+  nemo_rails_enabled: true          # NeMo policy-level guardrails (Phase 3A Task 3.10)
+
+  # ── Kill switches (emergency off without redeploy) ────────────────────────
+  kill_switch_publish_verdicts: false  # set true to stop publishing — silences all output
+  memory_enabled: true                 # Mem0 hierarchical memory (Phase 3A Task 3.1)
+
+strings:
+  # ── Delivery ──────────────────────────────────────────────────────────────
+  notify_channels: "telegram,email"   # comma-separated; remove a channel to disable
+
+  # ── Prompt pinning ────────────────────────────────────────────────────────
+  # Empty = use Langfuse production-label. Set to e.g. "v2" to pin locally.
+  prompt_version_override_analysis: ""
+  prompt_version_override_morning: ""
+  prompt_version_override_reflection: ""

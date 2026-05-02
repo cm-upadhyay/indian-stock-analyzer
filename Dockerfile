@@ -17,8 +17,9 @@ COPY pyproject.toml uv.lock ./
 RUN uv export --frozen --no-emit-workspace --no-dev --no-group local -o /tmp/requirements.txt && \
     uv pip install -r /tmp/requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
-# Copy application source — Lambda needs PYTHONPATH to include /var/task/src
+# Copy application source and committed config defaults
 COPY src/ ./src/
+COPY config/ ./config/
 ENV PYTHONPATH="${LAMBDA_TASK_ROOT}/src:${LAMBDA_TASK_ROOT}"
 
 # Lambda handler — set CMD per function in the Lambda console or deploy script:
