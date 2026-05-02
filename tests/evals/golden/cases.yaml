@@ -1,0 +1,494 @@
+# Golden eval dataset — 50 cases for regression testing the scoring + LLM pipeline.
+#
+# offline: true  → tests scoring/guardrails logic only, no LLM call needed, runs in CI
+# offline: false → tests full LLM pipeline, needs OPENAI_API_KEY, runs nightly
+#
+# Each offline case drives ScoringResult directly and asserts signal/confidence.
+# Each online case calls run_4pm() with mocked stock data and asserts LLM output quality.
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STRONG BUY conditions (RSI deeply oversold + uptrend + volume surge)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_001
+  offline: true
+  category: strong_buy
+  description: "RSI 22 + above MA200 + 2.8x volume + 30% from year low → strong BUY"
+  votes: {buy: 10, sell: 1, hold: 1}
+  expected_signal_in: ["BUY", "STRONG BUY"]
+  expected_confidence_min: 0.70
+
+- id: golden_002
+  offline: true
+  category: strong_buy
+  description: "RSI 28 + golden cross MA20>MA50 + 3.5x volume surge"
+  votes: {buy: 11, sell: 0, hold: 1}
+  expected_signal_in: ["BUY", "STRONG BUY"]
+  expected_confidence_min: 0.75
+
+- id: golden_003
+  offline: true
+  category: strong_buy
+  description: "RSI 25 + Bollinger Band lower touch + delivery 72%"
+  votes: {buy: 9, sell: 1, hold: 2}
+  expected_signal_in: ["BUY", "STRONG BUY", "LEAN BUY"]
+  expected_confidence_min: 0.60
+
+- id: golden_004
+  offline: false
+  category: strong_buy
+  description: "Oversold RSI + sector leader + positive earnings surprise in news"
+  tech_summary: "10/12 BUY votes — RSI 24, above MA200, volume 3.2x"
+  news: "HDFC Bank Q3 net profit surges 35% YoY, beats analyst estimates by wide margin"
+  expected_signal_in: ["BUY", "STRONG BUY"]
+  expected_confidence_min: 0.72
+
+- id: golden_005
+  offline: false
+  category: strong_buy
+  description: "Post-correction rebound — 40% from 52-week high, fundamentals intact"
+  tech_summary: "9/12 BUY votes — RSI 31, above MA200, Stochastic oversold"
+  news: "Reliance Industries correction overdone, analysts see 25% upside from current levels"
+  expected_signal_in: ["BUY", "STRONG BUY", "LEAN BUY"]
+  expected_confidence_min: 0.65
+
+# ══════════════════════════════════════════════════════════════════════════════
+# BUY conditions (moderate bullish signals)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_006
+  offline: true
+  category: buy
+  description: "RSI 38 + above MA200 + mild volume uptick"
+  votes: {buy: 7, sell: 2, hold: 3}
+  expected_signal_in: ["BUY", "LEAN BUY"]
+  expected_confidence_min: 0.55
+
+- id: golden_007
+  offline: true
+  category: buy
+  description: "RSI 35 + MACD bullish crossover + 1.8x volume"
+  votes: {buy: 8, sell: 2, hold: 2}
+  expected_signal_in: ["BUY", "LEAN BUY"]
+  expected_confidence_min: 0.58
+
+- id: golden_008
+  offline: false
+  category: buy
+  description: "Technically bullish + FII buying news + below sector median PE"
+  tech_summary: "7/12 BUY votes — RSI 36, above MA50 and MA200"
+  news: "FIIs net buyers of Rs 2400 crore in banking sector; ICICI Bank among top picks"
+  expected_signal_in: ["BUY", "LEAN BUY"]
+  expected_confidence_min: 0.60
+
+- id: golden_009
+  offline: false
+  category: buy
+  description: "Recovery after sector-wide selloff, company-specific positives"
+  tech_summary: "8/12 BUY votes — RSI 33, MA200 crossover forming"
+  news: "Tata Motors EV sales hit record in Q3; export order book at all-time high"
+  expected_signal_in: ["BUY", "LEAN BUY", "STRONG BUY"]
+  expected_confidence_min: 0.62
+
+- id: golden_010
+  offline: true
+  category: buy
+  description: "Williams %R oversold + CCI below -100 + above MA200"
+  votes: {buy: 8, sell: 1, hold: 3}
+  expected_signal_in: ["BUY", "LEAN BUY"]
+  expected_confidence_min: 0.58
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LEAN BUY conditions (mildly bullish, mixed signals)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_011
+  offline: true
+  category: lean_buy
+  description: "RSI 45 + above MA200 + neutral volume — slight bias"
+  votes: {buy: 6, sell: 3, hold: 3}
+  expected_signal_in: ["LEAN BUY", "BUY", "HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.50
+
+- id: golden_012
+  offline: true
+  category: lean_buy
+  description: "RSI 42 + MA20 crossed above MA50 + delivery 65%"
+  votes: {buy: 7, sell: 3, hold: 2}
+  expected_signal_in: ["LEAN BUY", "BUY"]
+  expected_confidence_min: 0.52
+
+- id: golden_013
+  offline: false
+  category: lean_buy
+  description: "Mildly bullish tech + neutral news + sector performing well"
+  tech_summary: "6/12 BUY votes — RSI 44, above MA200, flat volume"
+  news: "IT sector index up 2% on dollar strength; Infosys trading near support"
+  expected_signal_in: ["LEAN BUY", "BUY", "HOLD"]
+  expected_confidence_min: 0.50
+
+- id: golden_014
+  offline: false
+  category: lean_buy
+  description: "Recovering from dip, news neutral, no strong catalyst"
+  tech_summary: "6/12 BUY votes — RSI 40, Stochastic crossing up"
+  news: "Wipro management reiterated FY guidance; no major changes expected in near term"
+  expected_signal_in: ["LEAN BUY", "HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.48
+
+- id: golden_015
+  offline: true
+  category: lean_buy
+  description: "Slight majority BUY votes, no confirmation from volume"
+  votes: {buy: 6, sell: 2, hold: 4}
+  expected_signal_in: ["LEAN BUY", "BUY", "HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.48
+
+# ══════════════════════════════════════════════════════════════════════════════
+# HOLD / NEUTRAL conditions (genuinely mixed signals)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_016
+  offline: true
+  category: hold
+  description: "RSI 52 + near MA200 + average volume — true neutral"
+  votes: {buy: 4, sell: 4, hold: 4}
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_017
+  offline: true
+  category: hold
+  description: "Bearish short-term MA but above long-term MA200 + neutral RSI"
+  votes: {buy: 5, sell: 5, hold: 2}
+  expected_signal_in: ["HOLD", "NEUTRAL", "LEAN BUY", "LEAN SELL"]
+  expected_confidence_min: 0.0
+
+- id: golden_018
+  offline: false
+  category: hold
+  description: "Mixed technicals + conflicting news (earnings beat but guidance cut)"
+  tech_summary: "5/12 BUY, 5/12 SELL — RSI 50, exactly at MA200"
+  news: "Bajaj Finance Q3 profit beats estimates but lowers FY guidance; street divided"
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_019
+  offline: false
+  category: hold
+  description: "Large-cap stable with no catalyst — just flat market participation"
+  tech_summary: "6/12 BUY — RSI 48, above MA200, below-average volume"
+  news: "NTPC awaiting government decision on new power plants; no update expected soon"
+  expected_signal_in: ["HOLD", "NEUTRAL", "LEAN BUY"]
+  expected_confidence_min: 0.0
+
+- id: golden_020
+  offline: true
+  category: hold
+  description: "RSI neutral, MACD flat, MA converging — consolidation pattern"
+  votes: {buy: 5, sell: 4, hold: 3}
+  expected_signal_in: ["HOLD", "NEUTRAL", "LEAN BUY"]
+  expected_confidence_min: 0.0
+
+- id: golden_021
+  offline: true
+  category: hold
+  description: "High delivery (positive) but MACD bearish crossover (negative) — cancels out"
+  votes: {buy: 6, sell: 6, hold: 0}
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_022
+  offline: false
+  category: hold
+  description: "Post-earnings wait — all signals flat, market waiting for next catalyst"
+  tech_summary: "5/12 BUY — RSI 52, below MA50, above MA200"
+  news: "Asian Paints results in-line with estimates; next catalyst is raw material cost update"
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_023
+  offline: true
+  category: hold
+  description: "Small-cap at 52-week midpoint, no clear direction"
+  votes: {buy: 5, sell: 3, hold: 4}
+  expected_signal_in: ["HOLD", "LEAN BUY", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_024
+  offline: false
+  category: hold
+  description: "Sector rotation uncertainty — stock caught between two themes"
+  tech_summary: "6/12 SELL — RSI 55, MACD negative, above MA200"
+  news: "Pharma sector outlook mixed: domestic formulations strong, US generic pricing weak"
+  expected_signal_in: ["HOLD", "NEUTRAL", "LEAN SELL"]
+  expected_confidence_min: 0.0
+
+- id: golden_025
+  offline: true
+  category: hold
+  description: "Volume dry-up after a run — consolidation expected"
+  votes: {buy: 4, sell: 3, hold: 5}
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LEAN SELL conditions (mildly bearish)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_026
+  offline: true
+  category: lean_sell
+  description: "RSI 62 + below MA200 + average volume"
+  votes: {buy: 3, sell: 7, hold: 2}
+  expected_signal_in: ["LEAN SELL", "SELL"]
+  expected_confidence_min: 0.52
+
+- id: golden_027
+  offline: true
+  category: lean_sell
+  description: "MACD bearish + MA20 crossed below MA50 + neutral RSI 58"
+  votes: {buy: 3, sell: 6, hold: 3}
+  expected_signal_in: ["LEAN SELL", "SELL", "HOLD"]
+  expected_confidence_min: 0.50
+
+- id: golden_028
+  offline: false
+  category: lean_sell
+  description: "Mildly overbought with negative news catalyst"
+  tech_summary: "7/12 SELL — RSI 61, below MA200, delivery declining"
+  news: "Zomato faces regulatory scrutiny over delivery partner classification; SEBI inquiry"
+  expected_signal_in: ["LEAN SELL", "SELL"]
+  expected_confidence_min: 0.55
+
+- id: golden_029
+  offline: false
+  category: lean_sell
+  description: "Below MA200 + sector headwind + slightly elevated RSI"
+  tech_summary: "6/12 SELL — RSI 58, below MA50 and MA200"
+  news: "Real estate sector sees margin pressure as input costs rise; SOBHA Ltd impacted"
+  expected_signal_in: ["LEAN SELL", "SELL", "HOLD"]
+  expected_confidence_min: 0.50
+
+- id: golden_030
+  offline: true
+  category: lean_sell
+  description: "Mild majority SELL votes, no confirmation from volume"
+  votes: {buy: 3, sell: 6, hold: 3}
+  expected_signal_in: ["LEAN SELL", "SELL", "HOLD"]
+  expected_confidence_min: 0.50
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SELL conditions (clear bearish)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_031
+  offline: true
+  category: sell
+  description: "RSI 73 + below MA200 + 2.1x volume on decline"
+  votes: {buy: 1, sell: 9, hold: 2}
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.65
+
+- id: golden_032
+  offline: true
+  category: sell
+  description: "Death cross MA50 < MA200 + RSI 70 + near 52-week high"
+  votes: {buy: 2, sell: 8, hold: 2}
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.65
+
+- id: golden_033
+  offline: false
+  category: sell
+  description: "Overbought + negative earnings surprise"
+  tech_summary: "8/12 SELL — RSI 76, below MA200, CCI above +100"
+  news: "Paytm Q3 revenue misses estimates by 15%; management provides weak FY guidance"
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.68
+
+- id: golden_034
+  offline: false
+  category: sell
+  description: "Distribution pattern on charts + insider selling news"
+  tech_summary: "9/12 SELL — RSI 72, death cross formed, high volume on down days"
+  news: "Promoter reduces stake in company by 4%; analysts flag potential governance concerns"
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.70
+
+- id: golden_035
+  offline: true
+  category: sell
+  description: "Near 52-week high + Stochastic overbought + MACD divergence"
+  votes: {buy: 2, sell: 9, hold: 1}
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.68
+
+# ══════════════════════════════════════════════════════════════════════════════
+# STRONG SELL conditions
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_036
+  offline: true
+  category: strong_sell
+  description: "RSI 82 + below MA200 + 3x volume on decline + near 52-week high"
+  votes: {buy: 0, sell: 11, hold: 1}
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.75
+
+- id: golden_037
+  offline: false
+  category: strong_sell
+  description: "All bearish signals firing + major negative news"
+  tech_summary: "11/12 SELL — RSI 81, death cross, volume 3.8x average"
+  news: "Yes Bank faces RBI action for regulatory violations; ED raids on promoter premises"
+  expected_signal_in: ["SELL", "STRONG SELL"]
+  expected_confidence_min: 0.78
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EDGE CASES (conflicting signals, low data, unusual conditions)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_038
+  offline: false
+  category: edge_conflicting
+  description: "Bullish technicals but very negative news — news should override"
+  tech_summary: "8/12 BUY — RSI 35, above MA200, high volume"
+  news: "HDIL promoters arrested for Rs 4500 crore bank fraud; trading halted pending investigation"
+  expected_signal_in: ["SELL", "STRONG SELL", "HOLD"]
+  expected_confidence_min: 0.55
+
+- id: golden_039
+  offline: false
+  category: edge_conflicting
+  description: "Bearish technicals but very positive news — mixed verdict expected"
+  tech_summary: "8/12 SELL — RSI 72, below MA200"
+  news: "Vedanta announces special dividend of Rs 18 per share; board meeting tomorrow"
+  expected_signal_in: ["HOLD", "LEAN BUY", "LEAN SELL"]
+  expected_confidence_min: 0.0
+
+- id: golden_040
+  offline: false
+  category: edge_low_data
+  description: "Recently listed stock — only 3 months of data, signals unreliable"
+  tech_summary: "4/8 BUY — limited history, MA200 not available"
+  news: "Newly listed SME company reports first quarter results in-line with IPO projections"
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_041
+  offline: false
+  category: edge_circuit
+  description: "Stock near upper circuit — momentum extreme, risk of reversal"
+  tech_summary: "11/12 BUY — RSI 88, volume 8x, hit upper circuit twice this week"
+  news: "Operator-driven stocks in SME segment face SEBI surveillance; penny stock warning"
+  expected_signal_in: ["SELL", "HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_042
+  offline: true
+  category: edge_boundary
+  description: "Exactly at 50 RSI + exactly at MA200 — true neutral"
+  votes: {buy: 4, sell: 4, hold: 4}
+  expected_signal_in: ["HOLD", "NEUTRAL"]
+  expected_confidence_min: 0.0
+
+- id: golden_043
+  offline: false
+  category: edge_macro
+  description: "Stock-specific neutral but strong macro tailwind (RBI rate cut)"
+  tech_summary: "5/12 BUY — RSI 48, at MA200"
+  news: "RBI cuts repo rate by 25 bps — first cut in 2 years; positive for rate-sensitive sectors"
+  expected_signal_in: ["LEAN BUY", "BUY", "HOLD"]
+  expected_confidence_min: 0.48
+
+- id: golden_044
+  offline: false
+  category: edge_macro
+  description: "Technically bullish but global recession fears dominate"
+  tech_summary: "7/12 BUY — RSI 38, above MA200"
+  news: "US Fed signals prolonged high rates; global equity markets under pressure; FII outflows"
+  expected_signal_in: ["HOLD", "LEAN SELL", "LEAN BUY"]
+  expected_confidence_min: 0.0
+
+- id: golden_045
+  offline: false
+  category: edge_conflicting
+  description: "Penny stock pattern — high volume but no fundamental backing"
+  tech_summary: "9/12 BUY — RSI 32, volume 5x, low delivery 18%"
+  news: "Smallcap operator activity suspected; delivery percentage extremely low vs volume"
+  expected_signal_in: ["HOLD", "LEAN SELL", "SELL"]
+  expected_confidence_min: 0.0
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GUARDRAIL validation cases (offline — test field validators)
+# ══════════════════════════════════════════════════════════════════════════════
+
+- id: golden_046
+  offline: true
+  category: guardrail
+  description: "BUY signal but entry price 20% above current — should be corrected"
+  verdict_mock:
+    signal: BUY
+    confidence: 0.75
+    entry: 1200   # 20% above current price of 1000
+    stop_loss: 950
+    target: 1400
+    current_price: 1000
+  guardrail_should_correct: true
+  guardrail_correction: "entry within 5% of current price"
+
+- id: golden_047
+  offline: true
+  category: guardrail
+  description: "BUY signal but stop-loss only 0.5% below entry — too tight, should fail"
+  verdict_mock:
+    signal: BUY
+    confidence: 0.72
+    entry: 1000
+    stop_loss: 995   # only 0.5% below — below 2% minimum
+    target: 1100
+    current_price: 1000
+  guardrail_should_correct: true
+  guardrail_correction: "stop_loss at least 2% below entry"
+
+- id: golden_048
+  offline: true
+  category: guardrail
+  description: "BUY with confidence 0.45 — below minimum threshold, should be rejected"
+  verdict_mock:
+    signal: BUY
+    confidence: 0.45
+    entry: 500
+    stop_loss: 480
+    target: 560
+    current_price: 500
+  guardrail_should_correct: true
+  guardrail_correction: "confidence >= 0.60 required for BUY"
+
+- id: golden_049
+  offline: true
+  category: guardrail
+  description: "SELL with stop-loss 15% above entry — too wide, should be corrected"
+  verdict_mock:
+    signal: SELL
+    confidence: 0.70
+    entry: 1000
+    stop_loss: 1150   # 15% above entry for SELL — exceeds 8% max
+    target: 800
+    current_price: 1000
+  guardrail_should_correct: true
+  guardrail_correction: "stop_loss within 8% of entry"
+
+- id: golden_050
+  offline: true
+  category: guardrail
+  description: "HOLD signal with no entry/target — guardrails should pass without correction"
+  verdict_mock:
+    signal: HOLD
+    confidence: 0.68
+    entry: null
+    stop_loss: null
+    target: null
+    current_price: 800
+  guardrail_should_correct: false

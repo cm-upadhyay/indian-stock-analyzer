@@ -35,7 +35,28 @@ class PromptLibrary:
 
     @classmethod
     def get(cls, name: str, **variables: object) -> str:
-        """Return rendered system prompt for the given prompt name."""
+        """Return rendered system prompt. Tries Langfuse registry first, falls back to local YAML.
+
+        Langfuse path (Phase 3B — requires LANGFUSE_PUBLIC_KEY):
+            Fetches the "production"-labelled prompt version from Langfuse cloud.
+            Non-engineers can promote a new version in the Langfuse UI without a PR.
+            Falls back to local YAML if Langfuse is unconfigured or unreachable.
+
+        Local YAML path (always available, no network dependency):
+            Reads from src/analyzer/llm/prompts/{name}_{version}.yaml.
+            Version pinned by PROMPT_VERSION_{NAME} env var (default: v1).
+        """
+        # Phase 3B: try Langfuse prompt registry first
+        try:
+            from analyzer.observability.langfuse_client import get_prompt as langfuse_get
+
+            result: str | None = langfuse_get(name, **variables)
+            if result is not None:
+                return result
+        except Exception:
+            pass  # any failure falls through to local YAML
+
+        # Fall back to local YAML (always available)
         version = os.getenv(
             _ENV_PINS_KEY.format(name=name.upper()),
             _DEFAULT_VERSIONS.get(name, "v1"),
@@ -58,7 +79,7 @@ class PromptLibrary:
         raw_system = cls._cache[cache_key]["system"]
 
         if variables:
-            env = Environment(undefined=StrictUndefined)
+            env = Environment(undefined=StrictUndefined)  # nosec B701 # nosemgrep: python.jinja2.security.audit.missing-autoescape-disabled.missing-autoescape-disabled
             raw_system = env.from_string(raw_system).render(**variables)
 
         return raw_system

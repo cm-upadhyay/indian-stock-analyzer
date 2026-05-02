@@ -11,7 +11,7 @@ from typing import Any, cast
 import requests
 import structlog
 
-from analyzer.utils.reliability import nse_breaker, retry_api
+from analyzer.utils.reliability import nse_breaker, retry_nse
 
 log = structlog.get_logger()
 
@@ -31,12 +31,10 @@ def _session() -> requests.Session:
 
 def _warm(session: requests.Session) -> None:
     """Fetch NSE homepage to get session cookies. Must be called before every API call."""
-    session.get(f"{_BASE}/", timeout=10)
+    session.get(f"{_BASE}/", timeout=4)
 
 
-def _nse_get(
-    url: str, params: dict[str, str] | None = None, timeout: int = 10
-) -> requests.Response:
+def _nse_get(url: str, params: dict[str, str] | None = None, timeout: int = 5) -> requests.Response:
     """Single NSE HTTP GET with fresh session — raises on failure so breaker sees it."""
 
     def _call() -> requests.Response:
@@ -46,7 +44,7 @@ def _nse_get(
         resp.raise_for_status()
         return resp
 
-    return cast("requests.Response", nse_breaker(retry_api(_call))())
+    return cast("requests.Response", nse_breaker(retry_nse(_call))())
 
 
 def get_delivery_data(symbol: str) -> dict[str, object] | None:
@@ -65,7 +63,7 @@ def get_delivery_data(symbol: str) -> dict[str, object] | None:
 def get_option_chain_equity(symbol: str) -> list[dict[str, object]]:
     """Fetch option chain data for a stock (equity segment)."""
     try:
-        resp = _nse_get(f"{_BASE}/api/option-chain-equities", {"symbol": symbol}, timeout=15)
+        resp = _nse_get(f"{_BASE}/api/option-chain-equities", {"symbol": symbol}, timeout=8)
         payload: Any = resp.json()
         if isinstance(payload, dict):
             records = payload.get("records")
@@ -110,7 +108,7 @@ def get_fii_dii_flows() -> list[dict[str, object]]:
 def get_nifty_option_chain() -> list[dict[str, object]]:
     """Fetch Nifty index option chain (for market-wide PCR)."""
     try:
-        resp = _nse_get(f"{_BASE}/api/option-chain-indices", {"symbol": "NIFTY"}, timeout=15)
+        resp = _nse_get(f"{_BASE}/api/option-chain-indices", {"symbol": "NIFTY"}, timeout=8)
         payload: Any = resp.json()
         if isinstance(payload, dict):
             records = payload.get("records")
