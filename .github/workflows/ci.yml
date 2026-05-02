@@ -54,7 +54,7 @@ jobs:
         with:
           version: "latest"
       - run: uv sync --dev
-      - run: uv run pytest tests/evals/test_red_team.py -v
+      - run: uv run pytest tests/evals/test_red_team.py -v --no-cov
 
   # ── Security scanning ────────────────────────────────────────────────────────
 
@@ -157,7 +157,7 @@ jobs:
         with:
           version: "latest"
       - run: uv sync --dev
-      - run: uv run pytest tests/evals/test_golden.py -v
+      - run: uv run pytest tests/evals/test_golden.py -v --no-cov
 
   # ── SBOM artifact ─────────────────────────────────────────────────────────────
 
@@ -171,7 +171,7 @@ jobs:
           version: "latest"
       - run: uv sync --dev
       - run: uv export --frozen --no-emit-workspace --no-dev -o /tmp/requirements.txt
-      - run: uv run cyclonedx-py requirements /tmp/requirements.txt --of json --outfile sbom.json
+      - run: uv run cyclonedx-py requirements /tmp/requirements.txt --of json > sbom.json
       - uses: actions/upload-artifact@v4
         with:
           name: sbom-${{ github.sha }}
