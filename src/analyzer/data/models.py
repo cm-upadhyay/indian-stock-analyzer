@@ -6,7 +6,7 @@ These are the typed contracts between modules. No dicts cross module boundaries.
 from __future__ import annotations
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 # ── Raw data (adapter → data layer) ──────────────────────────────────────────
 
@@ -233,7 +233,7 @@ class StockVerdict(BaseModel):
     """10-field structured verdict from the 4 PM LLM call."""
 
     signal: str  # BUY | SELL | HOLD
-    confidence: float  # 0.0–1.0
+    confidence: float = Field(ge=0.0, le=1.0)  # 0.0–1.0
     entry: int | None  # null for HOLD
     stop_loss: int | None  # null for HOLD
     target: int | None  # null for HOLD

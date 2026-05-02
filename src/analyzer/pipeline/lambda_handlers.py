@@ -22,9 +22,13 @@ load_dotenv()
 configure_logging()
 log = structlog.get_logger()
 
+from analyzer.observability.langfuse_client import flush as flush_langfuse  # noqa: E402
+from analyzer.observability.sentry_setup import flush as flush_sentry  # noqa: E402
+from analyzer.observability.sentry_setup import init_sentry  # noqa: E402
 from analyzer.utils.secrets import load_secrets_from_ssm  # noqa: E402
 
 load_secrets_from_ssm()
+init_sentry()
 
 
 def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type-arg]
@@ -32,6 +36,7 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
     import re
     from datetime import date
 
+    from analyzer.flags import get_flag
     from analyzer.llm.formatter import format_email_html, format_telegram
     from analyzer.notify import telegram as tg
     from analyzer.notify.email import send_verdict_email
@@ -66,6 +71,10 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
         try:
             state = run_4pm(symbol)
             if state.verdict and state.stock and state.scoring:
+                if get_flag("kill_switch_publish_verdicts"):
+                    log.warning("kill_switch_active_skipping", symbol=symbol)
+                    continue
+
                 store.save(today, symbol, state.verdict)
                 results.append({"symbol": symbol, "signal": state.verdict.signal})
 
@@ -106,6 +115,8 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
         log.info("pipeline_email_sent", count=len(email_stocks))
 
     log.info("pipeline_lambda_done", completed=len(results))
+    flush_sentry()
+    flush_langfuse()
     return {"statusCode": 200, "completed": len(results)}
 
 
@@ -113,6 +124,7 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
     """8 AM: load yesterday's verdicts → morning notes → Telegram + email."""
     from datetime import date, timedelta
 
+    from analyzer.flags import get_flag
     from analyzer.llm.formatter import format_morning_email_html, format_telegram_morning
     from analyzer.notify import telegram as tg
     from analyzer.notify.email import send_verdict_email
@@ -129,6 +141,11 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
 
     log.info("morning_lambda_start", symbols_count=len(pairs))
     notes = []
+
+    kill_switch = get_flag("kill_switch_publish_verdicts")
+    if kill_switch:
+        log.warning("kill_switch_active_morning_suppressed", symbols_count=len(pairs))
+        return {"statusCode": 200, "completed": 0, "kill_switch": True}
 
     for symbol, _verdict in pairs:
         try:
@@ -151,4 +168,6 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
         log.info("morning_email_sent", intact=intact, strengthened=strengthened, weakened=weakened)
 
     log.info("morning_lambda_done", completed=len(notes))
+    flush_sentry()
+    flush_langfuse()
     return {"statusCode": 200, "completed": len(notes)}

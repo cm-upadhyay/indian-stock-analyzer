@@ -34,10 +34,12 @@ The LLM sees a compact JSON summary, not the full DataFrame.
 
 from __future__ import annotations
 
+from typing import Any
+
 import structlog
 from mcp.server.fastmcp import FastMCP  # type: ignore[import-untyped]
 
-from mcp_server.tools import corporate, option_chain, peers
+from mcp_server.tools import corporate, macro_news, option_chain, peers
 from mcp_server.tools import technical as tech_tool
 
 log = structlog.get_logger()
@@ -57,7 +59,7 @@ mcp = FastMCP(
 
 
 @mcp.tool()
-def get_technical_signals(symbol: str) -> dict:  # type: ignore[type-arg]
+def get_technical_signals(symbol: str) -> dict[str, Any]:
     """Compute 12 technical signals for a stock.
 
     Returns RSI, moving averages (20/50/200), MACD, volume ratio,
@@ -73,7 +75,7 @@ def get_technical_signals(symbol: str) -> dict:  # type: ignore[type-arg]
 
 
 @mcp.tool()
-def get_option_chain(symbol: str) -> dict:  # type: ignore[type-arg]
+def get_option_chain(symbol: str) -> dict[str, Any]:
     """Get option chain analysis for a stock: Put/Call Ratio (PCR) and max pain.
 
     PCR < 0.7 → bullish (calls dominate, market expects rally)
@@ -92,7 +94,7 @@ def get_option_chain(symbol: str) -> dict:  # type: ignore[type-arg]
 
 
 @mcp.tool()
-def get_corporate_actions(symbol: str) -> dict:  # type: ignore[type-arg]
+def get_corporate_actions(symbol: str) -> dict[str, Any]:
     """Get upcoming and recent corporate events: earnings, dividends, splits, AGMs.
 
     Returns next earnings date, dividend history (last 3), ex-dividend dates,
@@ -111,7 +113,7 @@ def get_corporate_actions(symbol: str) -> dict:  # type: ignore[type-arg]
 
 
 @mcp.tool()
-def get_peer_comparison(symbol: str) -> dict:  # type: ignore[type-arg]
+def get_peer_comparison(symbol: str) -> dict[str, Any]:
     """Compare a stock to its sector peers: relative PE, PB, and returns.
 
     Returns the stock's PE/PB vs sector median, the 5 closest peers by market cap,
@@ -127,6 +129,26 @@ def get_peer_comparison(symbol: str) -> dict:  # type: ignore[type-arg]
     """
     clean = symbol.replace(".NS", "")
     return peers.run(clean)
+
+
+@mcp.tool()
+def get_macro_news(query: str = "") -> dict[str, Any]:
+    """Search for broad Indian market news and macro themes via Tavily.
+
+    Returns top news headlines about Nifty, RBI policy, FII/DII flows,
+    sector rotation, Union Budget, and other India macro events.
+
+    Call this when:
+        - The stock's move seems driven by macro events (FII selloff, rate decision)
+        - You need context beyond yfinance stock-specific news
+        - The news you have is sparse or too old
+
+    Requires TAVILY_API_KEY — returns empty results gracefully if absent.
+
+    Args:
+        query: specific search query; leave empty for a broad Nifty/market search
+    """
+    return macro_news.run(query=query, max_results=5)
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

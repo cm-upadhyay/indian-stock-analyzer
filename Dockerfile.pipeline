@@ -1,0 +1,42 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Build tools needed to compile native extensions:
+#   g++/cmake  → chromadb (hnswlib compiled from source)
+#   rustc/cargo → some cryptography/tokenizers builds
+#   libgomp    → llm-guard (OpenMP threading)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    rustc \
+    cargo \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Get uv from the official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_NO_INSTALLER_METADATA=1
+ENV UV_LINK_MODE=copy
+
+# Install ALL deps — including the `local` group (llm-guard/torch, presidio, chromadb,
+# nemoguardrails, guardrails-ai). These are excluded from the Lambda API image but must
+# run here so the safety pipeline works in production.
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-emit-workspace --no-dev --group local -o /tmp/requirements.txt && \
+    uv pip install --system -r /tmp/requirements.txt
+
+# Pre-download spaCy model used by mem0ai — avoids runtime download on every cold start
+RUN python -m spacy download en_core_web_sm
+
+# Copy application source and committed config defaults
+COPY src/ ./src/
+COPY config/ ./config/
+ENV PYTHONPATH="/app/src"
+
+# Entry point — PIPELINE_JOB env var selects which batch to run:
+#   PIPELINE_JOB=4pm     → screener + full analysis (4:30 PM IST EventBridge trigger)
+#   PIPELINE_JOB=morning → morning follow-up notes (8:00 AM IST EventBridge trigger)
+CMD ["python", "-m", "analyzer.pipeline.entrypoint"]

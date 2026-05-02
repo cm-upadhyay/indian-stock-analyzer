@@ -45,10 +45,13 @@ import structlog
 
 from analyzer.config import settings
 from analyzer.data.models import StockVerdict
+from analyzer.flags import get_flag
 
 log = structlog.get_logger()
 
-_ENABLED = settings.enable_hitl
+# DB path and timeout are config values — read once at import is fine.
+# _ENABLED is intentionally removed: should_trigger_hitl() calls get_flag() per-call
+# so flipping enable_hitl in flags.yaml takes effect without restart.
 _DB_PATH = settings.hitl_db_path
 _TIMEOUT_SECS = settings.hitl_timeout_secs
 
@@ -69,9 +72,9 @@ def should_trigger_hitl(
         3. Small-cap BUY with target > HITL_LARGE_TARGET_UPSIDE above entry
         4. NeMo raised a soft policy flag
 
-    Returns False if HITL is disabled via env var.
+    Returns False if HITL is disabled via flag or env var.
     """
-    if not _ENABLED:
+    if not get_flag("enable_hitl", default=False):
         return False
 
     if verdict.signal in ("BUY", "SELL") and verdict.confidence < settings.hitl_confidence_trigger:
@@ -214,7 +217,7 @@ def get_checkpointer():  # type: ignore[no-untyped-def]
 
 # ── Decision storage (simple file-based for Phase 3A) ────────────────────────
 
-_DECISION_ROOT = Path("data/hitl_decisions")
+_DECISION_ROOT = Path("/tmp/data/hitl_decisions")
 
 
 def record_decision(thread_id: str, approved: bool) -> None:

@@ -42,7 +42,7 @@ from analyzer.memory.context import MemoryContext
 
 log = structlog.get_logger()
 
-_MEMORY_ROOT = Path("data/memory")
+_MEMORY_ROOT = Path("/tmp/data/memory")
 
 
 def _mem0_enabled() -> bool:
@@ -50,7 +50,36 @@ def _mem0_enabled() -> bool:
 
 
 def _build_config() -> dict:  # type: ignore[type-arg]
-    """Build Mem0 configuration for local ChromaDB storage."""
+    """Build Mem0 configuration.
+
+    Uses Qdrant Cloud when QDRANT_URL + QDRANT_API_KEY are set (Lambda-safe,
+    persists across cold starts). Falls back to local ChromaDB otherwise
+    (local dev only — ephemeral on Lambda).
+    """
+    qdrant_url = os.getenv("QDRANT_URL", "")
+    qdrant_api_key = os.getenv("QDRANT_API_KEY", "")
+
+    if qdrant_url:
+        vector_store: dict = {  # type: ignore[type-arg]
+            "provider": "qdrant",
+            "config": {
+                "collection_name": "indian_stock_analyzer",
+                "url": qdrant_url,
+                "api_key": qdrant_api_key,
+                "on_disk": False,
+            },
+        }
+        log.info("memory_using_qdrant", url=qdrant_url)
+    else:
+        vector_store = {
+            "provider": "chroma",
+            "config": {
+                "collection_name": "indian_stock_analyzer",
+                "path": str(_MEMORY_ROOT / "chroma"),
+            },
+        }
+        log.info("memory_using_chromadb_local")
+
     return {
         "llm": {
             "provider": "openai",
@@ -65,13 +94,7 @@ def _build_config() -> dict:  # type: ignore[type-arg]
                 "model": "text-embedding-3-small",
             },
         },
-        "vector_store": {
-            "provider": "chroma",
-            "config": {
-                "collection_name": "indian_stock_analyzer",
-                "path": str(_MEMORY_ROOT / "chroma"),
-            },
-        },
+        "vector_store": vector_store,
         "history_db_path": str(_MEMORY_ROOT / "history.db"),
     }
 
