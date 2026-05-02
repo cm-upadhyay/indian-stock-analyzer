@@ -1,6 +1,6 @@
 [project]
 name = "indian-stock-analyzer"
-version = "0.3.0"
+version = "0.4.0"
 requires-python = ">=3.12"
 dependencies = [
     # Data
@@ -11,12 +11,12 @@ dependencies = [
     "boto3>=1.34",
     # LLM + orchestration
     "openai>=1.0",
-    "litellm>=1.40",
+    "litellm>=1.83.0",
     "langgraph>=0.2",
     "langsmith>=0.1",
     # Models + validation
     "pydantic>=2.0",
-    "pydantic-settings>=2.0",
+    "pydantic-settings[yaml]>=2.2",
     "pyyaml>=6.0",
     "Jinja2>=3.1",
     # Reliability
@@ -30,14 +30,25 @@ dependencies = [
     "uvicorn[standard]>=0.29",
     # Delivery
     "python-telegram-bot>=21.0",
-    # Search
-    "tavily-python>=0.3",
     # Env
-    "python-dotenv>=1.0",
+    "python-dotenv>=1.2.2",
     # Task 3.7 — DataFrame validation (pure Python, Lambda-safe)
     "pandera>=0.20",
     # Task 3.3/3.4 — MCP server + tools
     "mcp>=1.0",
+    # Phase 3B — Do First 2: Qdrant Cloud (replaces local ChromaDB on Lambda)
+    "qdrant-client>=1.7",
+    # Phase 3B — Do First 3: Tavily macro-news MCP tool
+    "tavily-python>=0.3",
+    # Phase 3B — Task 3.14: Observability (all lightweight HTTP clients / pure Python)
+    "langfuse>=2.0",
+    "sentry-sdk>=2.0",
+    "opentelemetry-sdk>=1.20",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.20",
+    "aiohttp>=3.13.4",
+    "cryptography>=46.0.6",
+    "python-jose[cryptography]>=3.3",
 ]
 
 [project.optional-dependencies]
@@ -47,8 +58,9 @@ notebook = [
 ]
 
 [dependency-groups]
-# local = heavy packages that run locally only — excluded from Lambda via --no-group local.
-# All have graceful ImportError fallbacks so the pipeline degrades silently when absent.
+# local = heavy packages excluded from the API Lambda image (--no-group local in Dockerfile).
+# These run on the ECS Fargate pipeline image (Dockerfile.pipeline uses --group local).
+# All have graceful ImportError fallbacks so they degrade silently if somehow absent.
 local = [
     # Task 3.1 — Hierarchical memory (chromadb needs cmake/gcc to compile hnswlib)
     "mem0ai>=0.1",
@@ -73,6 +85,10 @@ dev = [
     "types-requests>=2.31",
     "boto3-stubs[s3]>=1.34",
     "deepeval>=3.4.6",
+    # Phase 3B — Task 3.13: CI security scanners (local + CI only, not Lambda)
+    "bandit[toml]>=1.7",
+    "pip-audit>=2.0",
+    "cyclonedx-bom>=4.0",
 ]
 
 [build-system]
@@ -141,4 +157,19 @@ omit = [
     "src/analyzer/llm/reviewer.py",
     "src/analyzer/outcomes/tracker.py",
     "src/mcp_server/*",
+    # Phase 3B — omit observability modules (require Langfuse/Sentry/OTel credentials)
+    "src/analyzer/observability/*",
+    # Phase 3C — omit modules requiring external services (DynamoDB, Qdrant, flag YAML)
+    "src/analyzer/flags/*",
+    "src/analyzer/users/*",
+    "src/analyzer/utils/cache.py",
+]
+
+[tool.bandit]
+targets = ["src"]
+exclude_dirs = ["tests", ".venv"]
+skips = [
+    "B101",  # assert_used — asserts are fine in application code for invariants
+    "B311",  # random — used for non-cryptographic sampling/selection only
+    "B108",  # hardcoded_tmp_directory — /tmp/data/ is intentional: Lambda root fs is read-only
 ]

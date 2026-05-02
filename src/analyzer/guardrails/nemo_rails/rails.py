@@ -20,20 +20,23 @@ Graceful degradation:
     If nemoguardrails is not installed, both functions pass through unchanged with
     a one-time warning. The pipeline never crashes because of a missing rail.
 
-Env:
-    NEMO_RAILS_ENABLED — set "false" to bypass (default: true)
+Flag:
+    nemo_rails_enabled in config/flags.yaml (default: true).
+    Override per-run: FLAG_NEMO_RAILS_ENABLED=false
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import structlog
 
+from analyzer.flags import get_flag
+
 log = structlog.get_logger()
 
-_ENABLED = os.getenv("NEMO_RAILS_ENABLED", "true").lower() != "false"
+# _ENABLED is intentionally not a module-level constant — get_flag() is per-call
+# so flags.yaml changes take effect on the next pipeline run without a redeploy.
 _CONFIG_PATH = Path(__file__).parent / "config"
 
 _rails_instance = None
@@ -71,7 +74,7 @@ def apply_input_rail(text: str, symbol: str = "") -> tuple[str, bool]:
 
     Called from: node_sanitize_inputs in graph_4pm.py
     """
-    if not _ENABLED or not text.strip():
+    if not get_flag("nemo_rails_enabled", default=True) or not text.strip():
         return text, False
 
     rails = _get_rails()  # type: ignore[no-untyped-call]
@@ -115,7 +118,7 @@ def apply_output_rail(verdict_text: str, symbol: str = "") -> tuple[str, bool]:
 
     Called from: node_apply_nemo_rails in graph_4pm.py
     """
-    if not _ENABLED or not verdict_text.strip():
+    if not get_flag("nemo_rails_enabled", default=True) or not verdict_text.strip():
         return verdict_text, False
 
     rails = _get_rails()  # type: ignore[no-untyped-call]
@@ -147,3 +150,17 @@ def apply_output_rail(verdict_text: str, symbol: str = "") -> tuple[str, bool]:
     except Exception as e:
         log.warning("nemo_output_rail_error", symbol=symbol, error=str(e))
         return verdict_text, False
+
+
+def check_symbol_is_nse(symbol: str) -> bool:
+    """Return True if symbol looks like a valid NSE-listed equity.
+
+    Pure Python check — no NeMo dep. Used by tests and as a lightweight
+    pre-flight before making any data fetch or analysis call.
+    RELIANCE.NS → True   |   AAPL → False   |   BTC-USD → False
+    """
+    import re
+
+    cleaned = symbol.strip().upper()
+    # NSE format: uppercase letters/digits/& up to 20 chars, ending in .NS
+    return bool(re.match(r"^[A-Z0-9&]{1,20}\.NS$", cleaned))

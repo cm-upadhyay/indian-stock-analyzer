@@ -1,0 +1,51 @@
+{
+  "family": "indian-stock-analyzer-pipeline",
+  "taskRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecs-pipeline-task-role",
+  "executionRoleArn": "arn:aws:iam::YOUR_ACCOUNT_ID:role/ecs-pipeline-execution-role",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "3072",
+  "containerDefinitions": [
+    {
+      "name": "pipeline",
+      "image": "YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/indian-stock-analyzer-pipeline:latest",
+      "essential": true,
+      "environment": [
+        { "name": "PIPELINE_JOB",      "value": "4pm" },
+        { "name": "ENVIRONMENT",       "value": "production" },
+        { "name": "AWS_REGION",        "value": "us-east-1" },
+        { "name": "STORAGE_BACKEND",   "value": "s3" },
+        { "name": "S3_BUCKET_NAME",    "value": "analyzer-data-prod" },
+        { "name": "LOG_FORMAT",        "value": "json" },
+        { "name": "LOG_LEVEL",         "value": "INFO" },
+        { "name": "LANGCHAIN_PROJECT", "value": "indian-stock-analyzer" },
+        { "name": "LANGCHAIN_TRACING_V2", "value": "true" }
+      ],
+      "secrets": [
+        { "name": "OPENAI_API_KEY",      "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/OPENAI_API_KEY" },
+        { "name": "GEMINI_API_KEY",      "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/GEMINI_API_KEY" },
+        { "name": "LANGSMITH_API_KEY",   "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/LANGSMITH_API_KEY" },
+        { "name": "TELEGRAM_BOT_TOKEN",  "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/TELEGRAM_BOT_TOKEN" },
+        { "name": "TELEGRAM_CHAT_IDS",   "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/TELEGRAM_CHAT_IDS" },
+        { "name": "GMAIL_SENDER",        "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/GMAIL_SENDER" },
+        { "name": "GMAIL_APP_PASSWORD",  "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/GMAIL_APP_PASSWORD" },
+        { "name": "ADMIN_CHAT_ID",       "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/ADMIN_CHAT_ID" },
+        { "name": "QDRANT_URL",          "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/QDRANT_URL" },
+        { "name": "QDRANT_API_KEY",      "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/QDRANT_API_KEY" },
+        { "name": "TAVILY_API_KEY",      "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/TAVILY_API_KEY" },
+        { "name": "LANGFUSE_PUBLIC_KEY", "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/LANGFUSE_PUBLIC_KEY" },
+        { "name": "LANGFUSE_SECRET_KEY", "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/LANGFUSE_SECRET_KEY" },
+        { "name": "SENTRY_DSN",          "valueFrom": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/indian-stock-analyzer/prod/SENTRY_DSN" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/indian-stock-analyzer-pipeline",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
