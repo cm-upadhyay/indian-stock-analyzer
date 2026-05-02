@@ -1,7 +1,7 @@
 FROM public.ecr.aws/lambda/python:3.12
 
 # Patch OS-level CVEs before installing anything else (glibc et al.)
-RUN dnf upgrade -y glibc glibc-common glibc-langpack-en glibc-minimal-langpack && \
+RUN dnf upgrade -y && \
     dnf clean all
 
 WORKDIR /var/task

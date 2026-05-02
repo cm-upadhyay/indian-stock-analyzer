@@ -59,9 +59,8 @@ instrument_fastapi(app)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "*"
-    ],  # tightened in Phase 4 once Vercel domains are known  # nosemgrep: python.fastapi.security.wildcard-cors.wildcard-cors
+    # nosemgrep: python.fastapi.security.wildcard-cors.wildcard-cors
+    allow_origins=["*"],
     allow_methods=["GET"],
     allow_headers=["*"],
 )
