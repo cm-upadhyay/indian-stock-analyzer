@@ -89,7 +89,12 @@ jobs:
           version: "latest"
       - run: uv sync --dev
       - run: uv export --frozen --no-emit-workspace --no-dev -o /tmp/requirements.txt
-      - run: uv run pip-audit -r /tmp/requirements.txt --progress-spinner off
+      - run: |
+          # GHSA-xqmj-j6mv-4862: SSTI in litellm's /prompts/test HTTP endpoint.
+          # We use litellm as a library only — the proxy server is never started.
+          # Upgrading is blocked by llm-guard's conflicting tiktoken pin.
+          uv run pip-audit -r /tmp/requirements.txt --progress-spinner off \
+            --ignore-vuln GHSA-xqmj-j6mv-4862
 
   secrets:
     name: Secret scan (gitleaks)
@@ -131,6 +136,7 @@ jobs:
           exit-code: "1"
           severity: HIGH,CRITICAL
           ignore-unfixed: true  # skip CVEs with no available fix
+          trivyignore-file: .trivyignore
 
   # Pipeline image is heavy (~10 min with torch). Build only on merges to main/dev.
   build-pipeline-image:
