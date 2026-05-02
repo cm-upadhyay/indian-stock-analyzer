@@ -1,0 +1,4 @@
+# GHSA-xqmj-j6mv-4862 — LiteLLM SSTI in /prompts/test HTTP endpoint.
+# Not exploitable: we use litellm as a Python library, never run its proxy server.
+# Upgrade to 1.83.7 is blocked by llm-guard's conflicting tiktoken pin.
+GHSA-xqmj-j6mv-4862

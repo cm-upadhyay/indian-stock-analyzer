@@ -1,5 +1,9 @@
 FROM public.ecr.aws/lambda/python:3.12
 
+# Patch OS-level CVEs before installing anything else (glibc et al.)
+RUN dnf upgrade -y glibc glibc-common glibc-langpack-en glibc-minimal-langpack && \
+    dnf clean all
+
 WORKDIR /var/task
 
 # Get uv from the official image — used for lock-file-based dependency export
