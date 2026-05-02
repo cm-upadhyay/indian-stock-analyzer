@@ -27,8 +27,8 @@ _TRANSIENT_ERRORS = (
     OSError,
 )
 
-# ── Retry decorator ───────────────────────────────────────────────────────────
-# 3 attempts, exponential backoff: 1s, 2s, 4s (max 10s)
+# ── Retry decorators ──────────────────────────────────────────────────────────
+# Standard: 3 attempts, exponential backoff: 1s, 2s, 4s (max 10s)
 _retry_api = retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -36,9 +36,22 @@ _retry_api = retry(
     reraise=True,
 )
 
+# Fast-fail NSE variant: 2 attempts, 1s backoff — NSE is IP-blocked on AWS so 3 retries
+# just triple the wait time with no benefit. Circuit breaker trips after 5 full failures.
+_retry_nse = retry(
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=1, min=1, max=2),
+    retry=retry_if_exception_type(_TRANSIENT_ERRORS),
+    reraise=True,
+)
+
 
 def retry_api[**P, R](func: Callable[P, R]) -> Callable[P, R]:
     return _retry_api(func)
+
+
+def retry_nse[**P, R](func: Callable[P, R]) -> Callable[P, R]:
+    return _retry_nse(func)
 
 
 # ── Circuit breakers (one per external provider) ──────────────────────────────

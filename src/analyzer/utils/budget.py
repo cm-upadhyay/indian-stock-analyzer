@@ -31,7 +31,7 @@ from analyzer.config import settings
 
 log = structlog.get_logger()
 
-_BUDGET_ROOT = Path("data/budget")
+_BUDGET_ROOT = Path("/tmp/data/budget")
 
 
 class DailyBudget:

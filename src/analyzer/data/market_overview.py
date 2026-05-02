@@ -13,10 +13,10 @@ log = structlog.get_logger()
 
 _SECTOR_MAP: dict[str, tuple[str, str]] = {
     "RELIANCE.NS": ("^CNXEnergy", "Nifty Energy"),
-    "TCS.NS": ("^CNXInfotech", "Nifty IT"),
+    "TCS.NS": ("^CNXIT", "Nifty IT"),
     "HDFCBANK.NS": ("^NSEBANK", "Bank Nifty"),
-    "INFY.NS": ("^CNXInfotech", "Nifty IT"),
-    "WIPRO.NS": ("^CNXInfotech", "Nifty IT"),
+    "INFY.NS": ("^CNXIT", "Nifty IT"),
+    "WIPRO.NS": ("^CNXIT", "Nifty IT"),
     "ONGC.NS": ("^CNXEnergy", "Nifty Energy"),
     "TATAMOTORS.NS": ("^CNXAUTO", "Nifty Auto"),
     "MARUTI.NS": ("^CNXAUTO", "Nifty Auto"),

@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # Python dependencies (uv/pip ecosystem)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      # Security patches merged immediately; dev tooling batched weekly
+      dev-tools:
+        patterns: ["ruff", "mypy", "pytest*", "bandit*", "pip-audit*", "cyclonedx*"]
+        dependency-type: "development"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "python"
+
+  # GitHub Actions version pins
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+
+  # Frontend Node/npm dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "frontend"
