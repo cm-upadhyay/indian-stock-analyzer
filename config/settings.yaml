@@ -1,0 +1,36 @@
+# Application configuration — committed to git, reviewable in PRs.
+#
+# These are tunable thresholds and app-level defaults. They are NOT secrets.
+# Override any value at runtime via the matching environment variable (SCREAMING_SNAKE_CASE).
+# Environment variables always take precedence over this file.
+#
+# Secrets (API keys, tokens) → AWS SSM Parameter Store, never here.
+# Feature toggles (enable_hitl, enable_reflection, etc.) → .env / Lambda env vars
+# (Phase 3C moves toggles to OpenFeature YAML flags).
+
+reflection:
+  confidence_threshold: 0.65    # reflect on BUY/SELL verdicts below this confidence
+  reviewer_model: ""            # empty = use llm_smart_model at runtime
+
+guardrails:
+  max_retries: 2
+  entry_deviation_pct: 0.05     # entry price must be within this % of current price
+  stop_loss_min_pct: 0.02       # minimum stop-loss distance from entry
+  stop_loss_max_pct: 0.08       # maximum stop-loss distance from entry
+  min_confidence: 0.60          # minimum confidence required for BUY/SELL
+
+hitl:
+  confidence_trigger: 0.50      # HITL fires for directional calls below this
+  large_target_upside: 0.30     # HITL fires for BUY verdicts with upside above this
+  timeout_secs: 1800            # 30 minutes — how long to wait for admin response
+  db_path: data/hitl.db
+
+agentic:
+  max_tool_calls: 5             # safety cap on MCP tool calls per stock per run
+
+news:
+  max_age_days: 30              # drop articles older than this many days
+  fresh_days: 2                 # articles within this window get no age label prepended
+
+budget:
+  daily_token_limit: 2500000    # 2.5M = OpenAI free tier mini bucket

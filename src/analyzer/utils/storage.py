@@ -101,7 +101,10 @@ class AnalysisStore:
                 symbol = key.split("/")[-1].replace(".json", "")
                 raw = self._s3_get(key)
                 if raw:
-                    results.append((symbol, StockVerdict.model_validate_json(raw)))
+                    try:
+                        results.append((symbol, StockVerdict.model_validate_json(raw)))
+                    except Exception as e:
+                        log.warning("storage_corrupt_file", key=key, error=str(e))
         except Exception as e:
             log.error("s3_list_failed", prefix=prefix, error=str(e))
         return results

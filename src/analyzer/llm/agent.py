@@ -43,12 +43,14 @@ from analyzer.data.models import (
     StockVerdict,
     TechnicalSignals,
 )
+from analyzer.flags import get_flag
 from analyzer.llm.prompt_library import PromptLibrary
 from analyzer.memory.context import MemoryContext
 
 log = structlog.get_logger()
 
-_ENABLED = settings.enable_agentic_mode
+# _MAX_TOOL_CALLS is read once at import time (a numeric setting, not a toggle).
+# _ENABLED is read per-call via get_flag() so flags.yaml flips take effect immediately.
 _MAX_TOOL_CALLS = settings.max_tool_calls
 
 # ── Tool schemas (JSON Schema, shown to the LLM) ──────────────────────────────
@@ -119,6 +121,31 @@ _TOOL_SCHEMAS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_macro_news",
+            "description": (
+                "Search for broad Indian market news and macro themes (RBI policy, FII flows, "
+                "Nifty sector rotation, Union Budget, global cues). "
+                "Call this when the stock's move seems driven by macro events rather than "
+                "company-specific factors, or when stock-level news is sparse."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": (
+                            "Specific search query, e.g. 'RBI rate decision impact on banking stocks'. "
+                            "Leave empty for a broad Nifty/market overview."
+                        ),
+                    }
+                },
+                "required": [],
+            },
+        },
+    },
 ]
 
 # ── Tool executor (calls local MCP tool functions directly) ───────────────────
@@ -140,6 +167,10 @@ def _execute_tool(name: str, args: dict[str, str]) -> str:
             from mcp_server.tools.peers import run
 
             result = run(symbol)
+        elif name == "get_macro_news":
+            from mcp_server.tools.macro_news import run as macro_run
+
+            result = macro_run(query=args.get("query", ""))
         else:
             result = {"error": f"Unknown tool: {name}"}
         return json.dumps(result)
@@ -207,7 +238,13 @@ def run_agentic_analysis(
         5. Return the final verdict
 
     Falls back to Phase 2 fixed pipeline if agentic mode is disabled or fails.
+    Flag read per-call so flags.yaml changes take effect without restart.
     """
+    if not get_flag("enable_agentic_mode", default=True):
+        log.info("agentic_mode_disabled_by_flag", symbol=stock.symbol)
+        from analyzer.llm.analyst import call_analyst
+
+        return call_analyst(stock, tech, scoring, news, memory_context)
 
     system_prompt = PromptLibrary.get("analysis")
     user_message = _build_initial_message(stock, tech, scoring, news_context, memory_context)
