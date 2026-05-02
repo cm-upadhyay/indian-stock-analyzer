@@ -136,7 +136,7 @@ jobs:
           exit-code: "1"
           severity: HIGH,CRITICAL
           ignore-unfixed: true  # skip CVEs with no available fix
-          trivyignore-file: .trivyignore
+          trivyignores: .trivyignore
 
   # Pipeline image is heavy (~10 min with torch). Build only on merges to main/dev.
   build-pipeline-image:

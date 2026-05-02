@@ -2,3 +2,5 @@
 # Not exploitable: we use litellm as a Python library, never run its proxy server.
 # Upgrade to 1.83.7 is blocked by llm-guard's conflicting tiktoken pin.
 GHSA-xqmj-j6mv-4862
+# CVE-2026-4046 — waiting on patched Amazon Linux packages in Lambda base image.
+CVE-2026-4046
