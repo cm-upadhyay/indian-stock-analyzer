@@ -205,6 +205,13 @@ class AccuracyResponse(BaseModel):
     by_signal: dict[str, AccuracyBySignal]
 
 
+class MeResponse(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    subscription_status: str  # free | active | lapsed | cancelled
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
@@ -341,6 +348,24 @@ def accuracy(_user: dict[str, Any] = Security(_require_user_jwt)) -> AccuracyRes
         target_hit_pct=float(stats.get("target_hit_pct", 0.0)),
         stop_triggered_pct=float(stats.get("stop_triggered_pct", 0.0)),
         by_signal=by_signal,
+    )
+
+
+@app.get("/me", response_model=MeResponse)
+def me(user: dict[str, Any] = Security(_require_user_jwt)) -> MeResponse:  # noqa: B008
+    """Current user's profile and subscription status (Task 3.21)."""
+    user_id = user.get("sub", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token — no sub claim")
+
+    from analyzer.users.store import get_user
+
+    record = get_user(user_id) or {}
+    return MeResponse(
+        user_id=user_id,
+        email=user.get("email", ""),
+        name=user.get("name", ""),
+        subscription_status=record.get("subscription_status", "free"),
     )
 
 

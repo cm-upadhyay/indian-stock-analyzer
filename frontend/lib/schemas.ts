@@ -65,6 +65,15 @@ export const StockResponseSchema = z.object({
   verdict: VerdictSchema.nullable(),
 })
 
+// ── User / subscription ───────────────────────────────────────────────────────
+
+export const MeSchema = z.object({
+  user_id: z.string(),
+  email: z.string(),
+  name: z.string(),
+  subscription_status: z.enum(["free", "active", "lapsed", "cancelled"]),
+})
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type Verdict = z.infer<typeof VerdictSchema>
@@ -73,3 +82,4 @@ export type MorningNote = z.infer<typeof MorningNoteSchema>
 export type MorningResponse = z.infer<typeof MorningResponseSchema>
 export type AccuracyResponse = z.infer<typeof AccuracyResponseSchema>
 export type StockResponse = z.infer<typeof StockResponseSchema>
+export type Me = z.infer<typeof MeSchema>

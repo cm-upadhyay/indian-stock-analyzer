@@ -39,6 +39,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Accuracy
                 </a>{" "}
                 ·{" "}
+                <a href="/subscribe" className="underline hover:text-gray-600">
+                  Pricing
+                </a>{" "}
+                ·{" "}
                 <a href="/privacy" className="underline hover:text-gray-600">
                   Privacy
                 </a>{" "}

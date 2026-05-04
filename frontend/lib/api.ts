@@ -3,6 +3,8 @@ import {
   AccuracyResponseSchema,
   LatestResponse,
   LatestResponseSchema,
+  Me,
+  MeSchema,
   MorningResponse,
   MorningResponseSchema,
   StockResponse,
@@ -29,4 +31,8 @@ export async function fetchAccuracy(): Promise<AccuracyResponse> {
 
 export async function fetchStock(symbol: string): Promise<StockResponse> {
   return StockResponseSchema.parse(await apiFetch(`/api/stock/${encodeURIComponent(symbol)}`))
+}
+
+export async function fetchMe(): Promise<Me> {
+  return MeSchema.parse(await apiFetch("/api/me"))
 }
