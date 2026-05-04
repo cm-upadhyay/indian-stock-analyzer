@@ -12,7 +12,7 @@ set -euo pipefail
 
 source .env.prod 2>/dev/null || { echo "Missing .env.prod"; exit 1; }
 
-REGION="${AWS_REGION:-ap-south-1}"
+REGION="${AWS_REGION:-us-east-1}"
 ACCOUNT_ID="${AWS_ACCOUNT_ID}"
 ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 API_REPO="indian-stock-analyzer"
