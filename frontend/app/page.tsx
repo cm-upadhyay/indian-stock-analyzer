@@ -89,7 +89,7 @@ function VerdictGroup({
   )
 }
 
-function MorningSection() {
+function MorningSection({ eveningDate }: { eveningDate: string }) {
   const { status } = useSession()
   const { data, isLoading } = useQuery({
     queryKey: ["morning"],
@@ -98,7 +98,9 @@ function MorningSection() {
     staleTime: 5 * 60 * 1000,
   })
 
-  if (isLoading || !data || data.count === 0) return null
+  // Morning notes are "how the previous evening's picks opened" — only show
+  // if the morning date is strictly after the evening date we're displaying.
+  if (isLoading || !data || data.count === 0 || data.date <= eveningDate) return null
 
   const intact = data.notes.filter((n) => n.status === "INTACT")
   const strengthened = data.notes.filter((n) => n.status === "STRENGTHENED")
@@ -167,7 +169,7 @@ export default function Home() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-10">
       {/* Morning follow-up — shown above evening analysis */}
-      <MorningSection />
+      <MorningSection eveningDate={data.date} />
 
       {/* Header */}
       <div className="mt-10 rounded-xl bg-[#1a1a2e] px-8 py-7 text-white">
