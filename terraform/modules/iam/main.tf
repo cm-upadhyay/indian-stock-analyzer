@@ -9,6 +9,10 @@ resource "aws_iam_role" "this" {
       Action    = "sts:AssumeRole"
     }]
   })
+
+  lifecycle {
+    ignore_changes = [description]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "policies" {

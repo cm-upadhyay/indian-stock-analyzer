@@ -11,7 +11,7 @@ resource "aws_lambda_function" "this" {
   }
 
   lifecycle {
-    # env vars contain secrets — manage via AWS Console / CI, not here
-    ignore_changes = [environment, image_uri]
+    # env vars + image managed by deploy script; image_config CMD override set per-function
+    ignore_changes = [environment, image_uri, image_config, publish]
   }
 }
