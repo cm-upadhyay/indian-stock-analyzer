@@ -272,9 +272,14 @@ def latest(
     run_date: str | None = None,
     _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> LatestResponse:
-    """All verdicts for a given date. Defaults to today."""
+    """All verdicts for a given date. Defaults to today, falls back to most recent date with data."""
     target = _parse_date(run_date)
     pairs = _store.load_all(target)
+    if not pairs and run_date is None:
+        most_recent = _store.latest_date()
+        if most_recent and most_recent != target:
+            target = most_recent
+            pairs = _store.load_all(target)
     return LatestResponse(
         date=str(target),
         count=len(pairs),
@@ -480,7 +485,7 @@ async def razorpay_webhook(request: Request) -> dict[str, str]:
     sub_id: str = entity.get("id", "")
 
     if not user_id:
-        log.warning("razorpay_webhook_missing_user_id", event=event, sub_id=sub_id)
+        log.warning("razorpay_webhook_missing_user_id", event_name=event, sub_id=sub_id)
         return {"status": "ignored", "reason": "no user_id in subscription notes"}
 
     from analyzer.users.store import update_subscription
@@ -498,9 +503,9 @@ async def razorpay_webhook(request: Request) -> dict[str, str]:
             expires_at = datetime.fromtimestamp(current_end, tz=UTC).isoformat()
         update_subscription(user_id, "cancelled", sub_id, expires_at)
     else:
-        log.info("razorpay_webhook_unhandled_event", event=event)
+        log.info("razorpay_webhook_unhandled_event", event_name=event)
 
-    log.info("razorpay_webhook_processed", event=event, user_id=user_id)
+    log.info("razorpay_webhook_processed", event_name=event, user_id=user_id)
     return {"status": "ok", "event": event}
 
 
