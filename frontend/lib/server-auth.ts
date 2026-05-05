@@ -16,10 +16,11 @@ import { cookies } from "next/headers"
 export async function buildAuthHeaders(): Promise<Record<string, string>> {
   const jar = await cookies()
 
-  // Auth.js v5: HTTP cookie in dev, __Secure- prefixed on HTTPS in production
+  // Auth.js v5 (@auth/core) uses "authjs." prefix, not "next-auth."
+  // HTTP (dev): authjs.session-token  |  HTTPS (prod): __Secure-authjs.session-token
   const token =
-    jar.get("next-auth.session-token")?.value ??
-    jar.get("__Secure-next-auth.session-token")?.value
+    jar.get("authjs.session-token")?.value ??
+    jar.get("__Secure-authjs.session-token")?.value
 
   if (token) {
     return { Authorization: `Bearer ${token}` }
