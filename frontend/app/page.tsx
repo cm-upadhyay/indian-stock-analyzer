@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
-import { fetchLatest, fetchMorning } from "@/lib/api"
+import { signIn } from "next-auth/react"
+import { fetchLatest, fetchMorning, AuthError } from "@/lib/api"
 import VerdictCard from "@/components/verdict-card"
 import MorningCard from "@/components/morning-card"
 import SignalBadge from "@/components/signal-badge"
@@ -22,7 +23,20 @@ function LoadingState() {
   )
 }
 
-function ErrorState() {
+function ErrorState({ isAuth }: { isAuth?: boolean }) {
+  if (isAuth) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4">
+        <p className="text-lg font-semibold text-gray-700">Sign in to view today&apos;s picks</p>
+        <button
+          onClick={() => signIn("google")}
+          className="rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+        >
+          Sign in with Google
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="flex min-h-[40vh] items-center justify-center">
       <p className="text-red-500" role="alert">Failed to load. Try refreshing.</p>
@@ -129,14 +143,14 @@ function MorningSection() {
 }
 
 export default function Home() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["latest"],
     queryFn: fetchLatest,
     staleTime: 5 * 60 * 1000,
   })
 
   if (isLoading) return <LoadingState />
-  if (isError) return <ErrorState />
+  if (isError) return <ErrorState isAuth={error instanceof AuthError} />
 
   const today = new Date().toISOString().slice(0, 10)
   if (!data || data.count === 0) return <EmptyState date={data?.date ?? today} />
