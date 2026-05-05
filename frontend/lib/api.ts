@@ -11,8 +11,16 @@ import {
   StockResponseSchema,
 } from "./schemas"
 
+export class AuthError extends Error {
+  constructor() {
+    super("Unauthorized")
+    this.name = "AuthError"
+  }
+}
+
 async function apiFetch(path: string): Promise<unknown> {
   const res = await fetch(path)
+  if (res.status === 401) throw new AuthError()
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
