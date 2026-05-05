@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
-import { fetchLatest, fetchMorning, AuthError } from "@/lib/api"
+import { signIn, useSession } from "next-auth/react"
+import { fetchLatest, fetchMorning } from "@/lib/api"
 import VerdictCard from "@/components/verdict-card"
 import MorningCard from "@/components/morning-card"
 import SignalBadge from "@/components/signal-badge"
@@ -90,9 +90,11 @@ function VerdictGroup({
 }
 
 function MorningSection() {
+  const { status } = useSession()
   const { data, isLoading } = useQuery({
     queryKey: ["morning"],
     queryFn: fetchMorning,
+    enabled: status === "authenticated",
     staleTime: 5 * 60 * 1000,
   })
 
@@ -143,14 +145,17 @@ function MorningSection() {
 }
 
 export default function Home() {
-  const { data, isLoading, isError, error } = useQuery({
+  const { status } = useSession()
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["latest"],
     queryFn: fetchLatest,
+    enabled: status === "authenticated",
     staleTime: 5 * 60 * 1000,
   })
 
-  if (isLoading) return <LoadingState />
-  if (isError) return <ErrorState isAuth={error instanceof AuthError} />
+  if (status === "loading" || (status === "authenticated" && isLoading)) return <LoadingState />
+  if (status === "unauthenticated") return <ErrorState isAuth={true} />
+  if (isError) return <ErrorState />
 
   const today = new Date().toISOString().slice(0, 10)
   if (!data || data.count === 0) return <EmptyState date={data?.date ?? today} />
