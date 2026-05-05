@@ -51,6 +51,43 @@ class AnalysisStore:
             return None
         return StockVerdict.model_validate_json(raw)
 
+    def latest_date(self) -> date | None:
+        """Return the most recent date that has analysis data, or None if empty."""
+        if _backend() == "s3":
+            return self._s3_latest_date()
+        day_dir = _LOCAL_ROOT / "analyses"
+        if not day_dir.exists():
+            return None
+        dates = sorted(
+            (d.name for d in day_dir.iterdir() if d.is_dir()),
+            reverse=True,
+        )
+        for d in dates:
+            try:
+                return date.fromisoformat(d)
+            except ValueError:
+                continue
+        return None
+
+    def _s3_latest_date(self) -> date | None:
+        import boto3
+
+        try:
+            resp = boto3.client("s3").list_objects_v2(
+                Bucket=_s3_bucket(), Prefix="analyses/", Delimiter="/"
+            )
+            prefixes = [
+                p["Prefix"].rstrip("/").split("/")[-1] for p in resp.get("CommonPrefixes", [])
+            ]
+            for d in sorted(prefixes, reverse=True):
+                try:
+                    return date.fromisoformat(d)
+                except ValueError:
+                    continue
+        except Exception as e:
+            log.error("s3_list_dates_failed", error=str(e))
+        return None
+
     def load_all(self, run_date: date) -> list[tuple[str, StockVerdict]]:
         """Load all verdicts for a given date. Returns (symbol, verdict) pairs."""
         if _backend() == "s3":
