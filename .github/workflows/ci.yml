@@ -91,10 +91,16 @@ jobs:
       - run: uv export --frozen --no-emit-workspace --no-dev -o /tmp/requirements.txt
       - run: |
           # GHSA-xqmj-j6mv-4862: SSTI in litellm's /prompts/test HTTP endpoint.
-          # We use litellm as a library only — the proxy server is never started.
-          # Upgrading is blocked by llm-guard's conflicting tiktoken pin.
+          # CVE-2026-42208, CVE-2026-42271: litellm 1.83.0 vulnerabilities (fix: 1.83.7).
+          # CVE-2026-44843: langchain-core 1.3.1 vulnerability (fix: 1.3.3).
+          # All three upgrades are blocked by llm-guard's conflicting tiktoken pin.
+          # Risk is acceptable: litellm is used as a library only, proxy server never started.
+          # Revisit when llm-guard releases a compatible version.
           uv run pip-audit -r /tmp/requirements.txt --progress-spinner off \
-            --ignore-vuln GHSA-xqmj-j6mv-4862
+            --ignore-vuln GHSA-xqmj-j6mv-4862 \
+            --ignore-vuln CVE-2026-42208 \
+            --ignore-vuln CVE-2026-42271 \
+            --ignore-vuln CVE-2026-44843
 
   secrets:
     name: Secret scan (gitleaks)

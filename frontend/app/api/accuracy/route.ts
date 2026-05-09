@@ -15,7 +15,7 @@ export async function GET() {
 
   let res: Response
   try {
-    res = await fetch(`${baseUrl}/accuracy`, {
+    res = await fetch(`${baseUrl}/api/v1/accuracy`, {
       headers: authHeaders,
       next: { revalidate: 3600 },
     })
