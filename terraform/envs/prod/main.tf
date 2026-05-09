@@ -1,7 +1,9 @@
 locals {
-  account_id = var.account_id
-  region     = var.region
-  ecr_base   = "${local.account_id}.dkr.ecr.${local.region}.amazonaws.com"
+  account_id        = var.account_id
+  region            = var.region
+  ecr_base          = "${local.account_id}.dkr.ecr.${local.region}.amazonaws.com"
+  # Strip https:// and trailing slash from Lambda function URL to get bare domain
+  lambda_url_domain = trimsuffix(replace(aws_lambda_function_url.api.function_url, "https://", ""), "/")
 }
 
 # ── ECR repositories ──────────────────────────────────────────────────────────
@@ -37,7 +39,7 @@ module "iam" {
   source    = "../../modules/iam"
   role_name = "analyzer-lambda-role"
   policy_arns = [
-    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+    # AmazonSSMReadOnlyAccess removed — replaced by least-privilege inline policy below
     "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
     "arn:aws:iam::aws:policy/AmazonS3FullAccess",
   ]
@@ -108,7 +110,7 @@ resource "aws_iam_role" "ecs_execution" {
 resource "aws_iam_role_policy_attachment" "ecs_execution_policies" {
   for_each = toset([
     "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy",
-    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+    # AmazonSSMReadOnlyAccess removed — replaced by least-privilege inline policy below
   ])
   role       = aws_iam_role.ecs_execution.name
   policy_arn = each.value
@@ -128,7 +130,7 @@ resource "aws_iam_role" "ecs_task" {
 
 resource "aws_iam_role_policy_attachment" "ecs_task_policies" {
   for_each = toset([
-    "arn:aws:iam::aws:policy/AmazonSSMReadOnlyAccess",
+    # AmazonSSMReadOnlyAccess removed — replaced by least-privilege inline policy below
     "arn:aws:iam::aws:policy/AmazonS3FullAccess",
   ])
   role       = aws_iam_role.ecs_task.name
@@ -316,4 +318,72 @@ resource "aws_scheduler_schedule" "morning_daily" {
       maximum_retry_attempts       = 0
     }
   }
+}
+
+# ── IAM least-privilege: SSM scoped to project prefix (Task 4.5) ──────────────
+# Replaces AmazonSSMReadOnlyAccess (account-wide) with a policy that only allows
+# reading /indian-stock-analyzer/prod/* parameters.
+
+locals {
+  ssm_prefix_arn = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/indian-stock-analyzer/prod/*"
+
+  ssm_least_privilege_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+      Resource = local.ssm_prefix_arn
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_ssm" {
+  name   = "ssm-read-project-only"
+  role   = module.iam.role_name
+  policy = local.ssm_least_privilege_policy
+}
+
+resource "aws_iam_role_policy" "ecs_execution_ssm" {
+  name   = "ssm-read-project-only"
+  role   = aws_iam_role.ecs_execution.name
+  policy = local.ssm_least_privilege_policy
+}
+
+resource "aws_iam_role_policy" "ecs_task_ssm" {
+  name   = "ssm-read-project-only"
+  role   = aws_iam_role.ecs_task.name
+  policy = local.ssm_least_privilege_policy
+}
+
+# ── WAF WebACL (Task 4.7) ─────────────────────────────────────────────────────
+
+module "waf" {
+  source = "../../modules/waf"
+  name   = "analyzer-api-waf"
+}
+
+# ── CloudFront (Task 4.6) ─────────────────────────────────────────────────────
+
+module "cloudfront_api" {
+  source            = "../../modules/cloudfront"
+  lambda_url_domain = local.lambda_url_domain
+  web_acl_arn       = module.waf.web_acl_arn
+  comment           = "Indian Stock Analyzer API"
+}
+
+# ── Outputs ───────────────────────────────────────────────────────────────────
+
+output "cloudfront_url" {
+  value       = module.cloudfront_api.url
+  description = "CloudFront URL — use this as API_BASE_URL in Vercel"
+}
+
+output "cloudfront_domain" {
+  value       = module.cloudfront_api.distribution_domain
+  description = "Bare CloudFront domain (without https://)"
+}
+
+output "waf_arn" {
+  value       = module.waf.web_acl_arn
+  description = "WAF WebACL ARN"
 }

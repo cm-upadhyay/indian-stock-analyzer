@@ -28,6 +28,7 @@ dependencies = [
     "fastapi>=0.111",
     "mangum>=0.17",
     "uvicorn[standard]>=0.29",
+    "slowapi>=0.1.9",
     # Delivery
     "python-telegram-bot>=21.0",
     # Env

@@ -23,7 +23,7 @@ export async function GET(
   let upstream: Response
   try {
     upstream = await fetch(
-      `${baseUrl}/stream/${encodeURIComponent(symbol)}`,
+      `${baseUrl}/api/v1/stream/${encodeURIComponent(symbol)}`,
       {
         headers: { ...authHeaders, Accept: "text/event-stream" },
         // @ts-expect-error — Next.js fetch supports duplex
