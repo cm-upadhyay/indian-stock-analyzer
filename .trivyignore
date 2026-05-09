@@ -1,6 +1,12 @@
-# GHSA-xqmj-j6mv-4862 — LiteLLM SSTI in /prompts/test HTTP endpoint.
-# Not exploitable: we use litellm as a Python library, never run its proxy server.
-# Upgrade to 1.83.7 is blocked by llm-guard's conflicting tiktoken pin.
+# LiteLLM 1.83.0 vulnerabilities — upgrade to 1.83.7 blocked by llm-guard's conflicting tiktoken pin.
+# Not exploitable: litellm is used as a Python library only; proxy server and MCP endpoints never started.
+# Revisit when llm-guard releases a compatible version.
 GHSA-xqmj-j6mv-4862
+CVE-2026-42203
+CVE-2026-42208
+CVE-2026-42271
+# CVE-2026-44843 — langchain-core 1.3.1 unsafe deserialization in load(); fix in 1.3.3.
+# Upgrade blocked by llm-guard's conflicting tiktoken pin (same root cause as litellm above).
+CVE-2026-44843
 # CVE-2026-4046 — waiting on patched Amazon Linux packages in Lambda base image.
 CVE-2026-4046
