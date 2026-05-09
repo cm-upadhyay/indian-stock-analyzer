@@ -1,18 +1,21 @@
 """FastAPI app — REST API for the Indian Stock Analyzer.
 
-Endpoints:
-    GET  /health                 — liveness / dependency check
-    GET  /latest                 — all verdicts for a given date (default: today)
-    GET  /stock/{symbol}         — verdict for one symbol on a given date
-    GET  /morning                — morning follow-up notes for a given date
-    GET  /accuracy               — rolling 30-day accuracy stats
-    GET  /stream/{symbol}        — SSE stream (active subscribers only — Task 3.21)
+Versioned endpoints (all user-facing):
+    GET  /api/v1/health          — liveness / dependency check
+    GET  /api/v1/latest          — all verdicts for a given date (default: today)
+    GET  /api/v1/stock/{symbol}  — verdict for one symbol on a given date
+    GET  /api/v1/morning         — morning follow-up notes for a given date
+    GET  /api/v1/accuracy        — rolling 30-day accuracy stats
+    GET  /api/v1/me              — current user profile + subscription status
+    GET  /api/v1/stream/{symbol} — SSE stream (active subscribers only)
+
+Unversioned (external callbacks — URLs already registered elsewhere):
+    POST /webhooks/razorpay      — Razorpay subscription lifecycle events
     POST /hitl/approve/{id}      — admin approve a HITL-paused verdict
     POST /hitl/reject/{id}       — admin reject a HITL-paused verdict
-    POST /webhooks/razorpay      — Razorpay subscription lifecycle events (Task 3.21)
 
 Auth:
-    Bearer JWT   — Auth.js HS256 token on all user-facing endpoints (Task 3.21).
+    Bearer JWT   — Auth.js HS256 token on all user-facing endpoints.
                    Open access when NEXTAUTH_SECRET is not configured (local dev).
     X-API-Key    — Server-to-server / HITL Telegram button endpoints only.
 
@@ -31,12 +34,15 @@ from typing import Any
 
 import structlog
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, Request, Security
+from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security.api_key import APIKeyHeader
 from mangum import Mangum
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from analyzer.utils.logging import configure_logging
 from analyzer.utils.storage import AnalysisStore, MorningNoteStore
@@ -53,17 +59,50 @@ load_secrets_from_ssm()
 init_sentry()
 init_otel()
 
-app = FastAPI(title="Indian Stock Analyzer API", version="3.0.0")
+app = FastAPI(title="Indian Stock Analyzer API", version="4.0.0")
 
 instrument_fastapi(app)
 
+
+# Rate limiter — in-memory per container.
+# Note: Lambda containers are ephemeral so limits reset on cold-start.
+# Cross-container abuse protection is handled by WAF (2000 req/IP/5 min).
+def _get_real_ip(request: Request) -> str:
+    """Real client IP — CloudFront sets X-Forwarded-For with client IP first."""
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_get_real_ip)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+# CORS — restrict to known frontend origins in prod; wildcard in dev.
+_allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    # nosemgrep: python.fastapi.security.wildcard-cors.wildcard-cors
-    allow_origins=["*"],
-    allow_methods=["GET"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+
+# v1 router — all user-facing endpoints live here
+v1 = APIRouter(prefix="/api/v1")
 
 _api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -246,8 +285,9 @@ def _to_verdict_out(symbol: str, verdict) -> VerdictOut:  # type: ignore[no-unty
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
-@app.get("/health", response_model=HealthResponse)
-def health() -> HealthResponse:
+@v1.get("/health", response_model=HealthResponse)
+@limiter.limit("120/minute")
+def health(request: Request) -> HealthResponse:
     checks: dict[str, str] = {}
 
     checks["llm_key"] = (
@@ -267,8 +307,10 @@ def health() -> HealthResponse:
     return HealthResponse(status=overall, checks=checks)
 
 
-@app.get("/latest", response_model=LatestResponse)
+@v1.get("/latest", response_model=LatestResponse)
+@limiter.limit("60/hour")
 def latest(
+    request: Request,
     run_date: str | None = None,
     _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> LatestResponse:
@@ -287,8 +329,10 @@ def latest(
     )
 
 
-@app.get("/stock/{symbol}", response_model=StockResponse)
+@v1.get("/stock/{symbol}", response_model=StockResponse)
+@limiter.limit("60/hour")
 def get_stock(
+    request: Request,
     symbol: str,
     run_date: str | None = None,
     _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
@@ -304,8 +348,10 @@ def get_stock(
     )
 
 
-@app.get("/morning", response_model=MorningResponse)
+@v1.get("/morning", response_model=MorningResponse)
+@limiter.limit("60/hour")
 def morning(
+    request: Request,
     run_date: str | None = None,
     _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> MorningResponse:
@@ -328,8 +374,12 @@ def morning(
     )
 
 
-@app.get("/accuracy", response_model=AccuracyResponse)
-def accuracy(_user: dict[str, Any] = Security(_require_user_jwt)) -> AccuracyResponse:  # noqa: B008
+@v1.get("/accuracy", response_model=AccuracyResponse)
+@limiter.limit("60/hour")
+def accuracy(
+    request: Request,
+    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> AccuracyResponse:
     """Running accuracy stats for the last 30 days. Added in Phase 3A (Task 3.2)."""
     from analyzer.outcomes.tracker import load_accuracy_stats
 
@@ -356,8 +406,9 @@ def accuracy(_user: dict[str, Any] = Security(_require_user_jwt)) -> AccuracyRes
     )
 
 
-@app.get("/me", response_model=MeResponse)
-def me(user: dict[str, Any] = Security(_require_user_jwt)) -> MeResponse:  # noqa: B008
+@v1.get("/me", response_model=MeResponse)
+@limiter.limit("60/hour")
+def me(request: Request, user: dict[str, Any] = Security(_require_user_jwt)) -> MeResponse:  # noqa: B008
     """Current user's profile and subscription status (Task 3.21)."""
     user_id = user.get("sub", "")
     if not user_id:
@@ -374,8 +425,10 @@ def me(user: dict[str, Any] = Security(_require_user_jwt)) -> MeResponse:  # noq
     )
 
 
-@app.get("/stream/{symbol}")
+@v1.get("/stream/{symbol}")
+@limiter.limit("20/hour")
 async def stream_analysis(
+    request: Request,
     symbol: str,
     user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> StreamingResponse:
@@ -528,6 +581,8 @@ def hitl_reject(thread_id: str, _: None = Security(_require_api_key)) -> dict[st
     log.info("hitl_reject_endpoint", thread_id=thread_id)
     return {"status": "rejected", "thread_id": thread_id}
 
+
+app.include_router(v1)
 
 # Lambda handler
 handler = Mangum(app)

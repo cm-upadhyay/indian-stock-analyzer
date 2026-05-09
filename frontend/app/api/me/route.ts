@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   const base = process.env.API_BASE_URL
-  const res = await fetch(`${base}/me`, {
+  const res = await fetch(`${base}/api/v1/me`, {
     headers: headers as HeadersInit,
     cache: "no-store",
   })
