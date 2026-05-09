@@ -19,7 +19,7 @@ export async function GET(
 
   let res: Response
   try {
-    res = await fetch(`${baseUrl}/stock/${encodeURIComponent(symbol)}`, {
+    res = await fetch(`${baseUrl}/api/v1/stock/${encodeURIComponent(symbol)}`, {
       headers: authHeaders,
       next: { revalidate: 300 },
     })

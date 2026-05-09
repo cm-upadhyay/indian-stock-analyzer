@@ -15,7 +15,7 @@ export async function GET() {
 
   let res: Response
   try {
-    res = await fetch(`${baseUrl}/morning`, {
+    res = await fetch(`${baseUrl}/api/v1/morning`, {
       headers: authHeaders,
       next: { revalidate: 300 },
     })
