@@ -9,6 +9,7 @@ on:
       - 'Dockerfile'
       - 'pyproject.toml'
       - 'uv.lock'
+  workflow_dispatch:  # allow manual trigger from GitHub Actions UI
 
 permissions:
   id-token: write   # needed for OIDC token request
