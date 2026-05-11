@@ -160,8 +160,8 @@ def send_approval_request(thread_id: str, symbol: str, verdict: StockVerdict) ->
             else {
                 "inline_keyboard": [
                     [
-                        {"text": "✅ Approve", "url": approve_url},
-                        {"text": "❌ Reject", "url": reject_url},
+                        {"text": "✅ Approve", "callback_data": f"hitl_approve:{thread_id}"},
+                        {"text": "❌ Reject", "callback_data": f"hitl_reject:{thread_id}"},
                     ]
                 ]
             }
@@ -191,28 +191,38 @@ def send_approval_request(thread_id: str, symbol: str, verdict: StockVerdict) ->
         return False
 
 
-# ── SQLite checkpointer ───────────────────────────────────────────────────────
+# ── Checkpointer ─────────────────────────────────────────────────────────────
 
 
 def get_checkpointer():  # type: ignore[no-untyped-def]
-    """Return a LangGraph SQLite checkpointer for HITL state persistence.
+    """Return a LangGraph checkpointer for HITL state persistence.
 
-    Phase 4 replaces this with DynamoDB:
-        from langgraph.checkpoint.dynamodb import DynamoDBSaver
-        return DynamoDBSaver(table_name="analyzer-hitl-checkpoints-prod")
+    Backend selected by HITL_CHECKPOINTER env var (default: "dynamodb" in prod, "memory" in dev):
+        "dynamodb" — DynamoDBSaver, survives Lambda cold-starts (prod default)
+        "memory"   — MemorySaver, in-process only (local dev / testing)
     """
-    try:
-        from langgraph.checkpoint.sqlite import SqliteSaver
+    backend = settings.hitl_checkpointer.lower()
 
-        db_path = Path(_DB_PATH)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        return SqliteSaver.from_conn_string(str(db_path))
-    except ImportError:
-        log.warning("langgraph_sqlite_not_available", hint="pip install langgraph[sqlite]")
-        return None
-    except Exception as e:
-        log.warning("hitl_checkpointer_init_failed", error=str(e))
-        return None
+    if backend == "dynamodb":
+        try:
+            from langgraph_checkpoint_aws import DynamoDBSaver
+
+            table = settings.hitl_checkpoints_table
+            log.info("hitl_checkpointer_dynamodb", table=table)
+            return DynamoDBSaver(table_name=table)
+        except ImportError:
+            log.warning(
+                "langgraph_checkpoint_aws_not_installed",
+                hint="uv add langgraph-checkpoint-aws",
+            )
+        except Exception as e:
+            log.warning("hitl_checkpointer_dynamodb_failed", error=str(e))
+
+    # Fallback: in-memory (state lost on cold-start — acceptable for local dev)
+    from langgraph.checkpoint.memory import MemorySaver
+
+    log.info("hitl_checkpointer_memory")
+    return MemorySaver()
 
 
 # ── Decision storage (simple file-based for Phase 3A) ────────────────────────

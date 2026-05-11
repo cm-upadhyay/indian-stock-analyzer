@@ -55,6 +55,11 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
     else:
         symbols = run_screener()
 
+    if not get_flag("enable_hitl", default=False):
+        log.warning(
+            "hitl_disabled", hint="Set enable_hitl=true in config/flags.yaml to enable HITL review"
+        )
+
     log.info("pipeline_lambda_start", symbols_count=len(symbols))
 
     store = AnalysisStore()
@@ -70,6 +75,9 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
 
         try:
             state = run_4pm(symbol)
+            if state.hitl_pending:
+                log.info("hitl_pending_awaiting_approval", symbol=symbol)
+                continue  # verdict held — resume_4pm publishes after admin decides
             if state.verdict and state.stock and state.scoring:
                 if get_flag("kill_switch_publish_verdicts"):
                     log.warning("kill_switch_active_skipping", symbol=symbol)

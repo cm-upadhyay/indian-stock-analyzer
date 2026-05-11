@@ -8,6 +8,39 @@ resource "aws_wafv2_web_acl" "this" {
     allow {}
   }
 
+  # Priority-0 allow: let Telegram webhook requests through before any managed rules.
+  # AWSManagedRulesCommonRuleSet GenericLFI_BODY blocks bodies containing "/" (e.g. "/subscribe"),
+  # and the IP reputation list may flag Telegram's delivery servers.
+  # The endpoint has its own HMAC verification so bypassing WAF here is safe.
+  rule {
+    name     = "AllowTelegramWebhook"
+    priority = 0
+
+    action {
+      allow {}
+    }
+
+    statement {
+      byte_match_statement {
+        field_to_match {
+          uri_path {}
+        }
+        positional_constraint = "STARTS_WITH"
+        search_string         = "/api/v1/telegram/webhook"
+        text_transformation {
+          priority = 0
+          type     = "NONE"
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "AllowTelegramWebhook"
+      sampled_requests_enabled   = true
+    }
+  }
+
   # AWS managed rule groups (all free)
   rule {
     name     = "CommonRuleSet"
