@@ -101,11 +101,17 @@ class Settings(BaseSettings):
     # ── HITL (moved to config/settings.yaml) ──────────────────────────────────
     hitl_confidence_trigger: float = Field(0.50, ge=0.0, le=1.0)
     hitl_large_target_upside: float = Field(0.30, ge=0.0)
-    hitl_timeout_secs: int = Field(1800, gt=0)
+    hitl_timeout_secs: int = Field(10800, gt=0)  # 3 hours
     hitl_db_path: str = "/tmp/data/hitl.db"
+    hitl_checkpointer: str = "dynamodb"  # "dynamodb" | "memory"
+    hitl_checkpoints_table: str = "analyzer-hitl-checkpoints-prod"
     admin_chat_id: str = ""
     telegram_bot_token: str = ""
+    telegram_webhook_secret: str = ""  # X-Telegram-Bot-Api-Secret-Token header value
     api_base_url: str = "http://localhost:8000"
+
+    # ── Telegram subscribers (Part 6) ─────────────────────────────────────────
+    subscribers_table: str = "analyzer-subscribers-prod"
 
     # ── Agentic loop (moved to config/settings.yaml) ──────────────────────────
     max_tool_calls: int = Field(5, ge=1)
