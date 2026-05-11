@@ -98,6 +98,11 @@ def _run_4pm(symbols: list[str], dry_run: bool, no_notify: bool) -> None:
         log.info("analyzing", symbol=symbol)
         state = run_4pm(symbol)
 
+        if state.hitl_pending:
+            log.info("hitl_pending_awaiting_approval", symbol=symbol)
+            print(f"[HITL] {symbol} — verdict held for admin approval via Telegram")
+            continue
+
         if state.error:
             log.error("pipeline_error", symbol=symbol, error=state.error)
             continue

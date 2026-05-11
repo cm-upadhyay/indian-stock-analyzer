@@ -26,9 +26,12 @@ Write ADR-001 (LangGraph) and ADR-006 (Mem0) before modifying this file.
 from __future__ import annotations
 
 import os
+import time
+from typing import Any
 
 import structlog
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 
 from analyzer.adapters import nse as nse_adapter
 from analyzer.data import corporate as corp_module
@@ -195,7 +198,16 @@ def node_reflect(state: AnalysisState) -> AnalysisState:
 
 
 def node_human_review(state: AnalysisState) -> AnalysisState:
-    """Task 3.11 — HITL approval gate for high-stakes verdicts."""
+    """Phase 4 HITL — pause for admin approval using LangGraph interrupt().
+
+    Flow:
+        1. If HITL not triggered → pass through immediately.
+        2. If triggered → send Telegram, call interrupt() → graph pauses, state
+           checkpointed to DynamoDB. ECS task finishes. Verdict not published yet.
+        3. Admin clicks Approve/Reject → /hitl/approve or /hitl/reject hits API Lambda
+           → resume_4pm() resumes graph → interrupt() returns the decision → publish
+           runs (or not) based on the decision.
+    """
     if state.verdict is None or state.error:
         return state
 
@@ -204,7 +216,7 @@ def node_human_review(state: AnalysisState) -> AnalysisState:
         reflection_overrode=state.reflection_overrode,
         nemo_soft_flag=state.nemo_blocked,
     ):
-        return state.model_copy(update={"hitl_approved": None})  # not triggered
+        return state.model_copy(update={"hitl_approved": None})
 
     thread_id = f"{state.symbol}_{state.run_date}"
     log.info("human_review_triggered", symbol=state.symbol, thread_id=thread_id)
@@ -212,19 +224,26 @@ def node_human_review(state: AnalysisState) -> AnalysisState:
     sent = send_approval_request(thread_id, state.symbol, state.verdict)
     if not sent:
         log.warning("hitl_send_failed_auto_approve", symbol=state.symbol)
-        return state.model_copy(update={"hitl_approved": True})  # fail-open on send error
+        return state.model_copy(update={"hitl_approved": True})  # fail-open
 
-    # Phase 3A: fire-and-forget — send the Telegram request and drop the verdict.
-    # Blocking here (wait_for_decision) would stall all remaining stocks in the batch
-    # and risk Lambda timeout. Phase 4 replaces this with the LangGraph interrupt/resume
-    # pattern backed by DynamoDB so the verdict can be resumed after admin approval.
-    log.info("hitl_pending_dropped", symbol=state.symbol, thread_id=thread_id)
-    return state.model_copy(
-        update={
-            "hitl_approved": False,
-            "error": "hitl: verdict held for admin review — not published (Phase 4 will resume)",
+    # Pause here — resumes when resume_4pm(thread_id, approved=...) is called.
+    # On resume, interrupt() returns the dict passed to Command(resume=...).
+    # send_approval_request above runs only once (not re-executed on resume).
+    from analyzer.config import settings as _cfg
+
+    decision: dict[str, Any] = interrupt(
+        {
+            "thread_id": thread_id,
+            "symbol": state.symbol,
+            "expires_at": int(time.time()) + _cfg.hitl_timeout_secs,
         }
     )
+
+    approved = bool(decision.get("approved", False))
+    log.info("human_review_decided", thread_id=thread_id, approved=approved)
+    if not approved:
+        return state.model_copy(update={"hitl_approved": False, "error": "hitl: rejected by admin"})
+    return state.model_copy(update={"hitl_approved": True})
 
 
 # ── Phase 2 nodes (unchanged) ─────────────────────────────────────────────────
@@ -478,8 +497,86 @@ def build_4pm_graph() -> StateGraph[AnalysisState]:
 
 
 def run_4pm(symbol: str) -> AnalysisState:
-    """Run the full 4 PM pipeline for a single stock."""
-    graph = build_4pm_graph().compile()
-    initial = AnalysisState(symbol=symbol)
-    result = graph.invoke(initial)
-    return AnalysisState(**result)
+    """Run the full 4 PM pipeline for a single stock.
+
+    If HITL triggers, graph.invoke() returns early (at the interrupt point).
+    Returns state with hitl_pending=True so callers skip publishing.
+    Resume happens later via resume_4pm() when admin approves/rejects.
+    """
+    from analyzer.hitl.approver import get_checkpointer
+
+    graph = build_4pm_graph().compile(checkpointer=get_checkpointer())
+    config: dict[str, Any] = {"configurable": {"thread_id": symbol}}
+    result = graph.invoke(AnalysisState(symbol=symbol), config=config)  # type: ignore[call-overload]
+    state = AnalysisState(**result)
+
+    # Detect HITL interrupt: graph is paused and waiting for admin decision
+    snapshot = graph.get_state(config)  # type: ignore[arg-type]
+    if snapshot and snapshot.next:
+        log.info("hitl_interrupt_detected", symbol=symbol, next=snapshot.next)
+        return state.model_copy(update={"hitl_pending": True})
+
+    return state
+
+
+def resume_4pm(thread_id: str, approved: bool) -> AnalysisState | None:
+    """Resume a HITL-paused graph run after admin decision.
+
+    Returns the final AnalysisState so callers can send Telegram.
+    Returns None if the checkpoint is not found or the approval window expired.
+    """
+    from analyzer.hitl.approver import get_checkpointer
+
+    graph = build_4pm_graph().compile(checkpointer=get_checkpointer())
+    # run_4pm keys the checkpoint by symbol only (e.g. "INFY.NS").
+    # The thread_id from Telegram buttons is "SYMBOL_DATE" — strip the date suffix.
+    graph_thread_id = thread_id.rsplit("_", 1)[0] if "_" in thread_id else thread_id
+    config: dict[str, Any] = {"configurable": {"thread_id": graph_thread_id}}
+
+    snapshot = graph.get_state(config)  # type: ignore[arg-type]
+    if not snapshot or not snapshot.next:
+        log.warning("hitl_resume_not_found", thread_id=thread_id, graph_thread_id=graph_thread_id)
+        return None
+
+    # Check approval window — expires_at stored in interrupt payload
+    try:
+        expires_at = snapshot.tasks[0].interrupts[0].value.get("expires_at", 0)
+        if expires_at and time.time() > expires_at:
+            log.warning("hitl_expired", thread_id=thread_id)
+            return None
+    except Exception:
+        pass
+
+    # Capture state BEFORE invoke — verdict/stock/scoring are already set from earlier nodes.
+    # Used as fallback if post-invoke DynamoDB serialization fails (the graph still runs
+    # and node_publish saves to S3 even if the final state write throws).
+    pre_invoke_values = dict(snapshot.values) if snapshot.values else {}
+
+    log.info("hitl_resuming", thread_id=thread_id, approved=approved)
+    try:
+        graph.invoke(Command(resume={"approved": approved}), config=config)  # type: ignore[call-overload]
+    except Exception as e:
+        log.warning("hitl_resume_post_invoke_error", error=str(e), thread_id=thread_id)
+        # node_publish likely ran (verdict in S3) but state serialization failed.
+        # Return pre-invoke state so callers can still send Telegram/email.
+        if approved and pre_invoke_values:
+            try:
+                return AnalysisState(**pre_invoke_values)
+            except Exception:
+                pass
+        return None
+
+    final = graph.get_state(config)  # type: ignore[arg-type]
+    if final and final.values:
+        try:
+            return AnalysisState(**final.values)
+        except Exception:
+            pass
+
+    # Fallback to pre-invoke state
+    if pre_invoke_values:
+        try:
+            return AnalysisState(**pre_invoke_values)
+        except Exception:
+            pass
+    return None
