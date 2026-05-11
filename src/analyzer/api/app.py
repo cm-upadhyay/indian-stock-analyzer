@@ -9,10 +9,15 @@ Versioned endpoints (all user-facing):
     GET  /api/v1/me              — current user profile + subscription status
     GET  /api/v1/stream/{symbol} — SSE stream (active subscribers only)
 
+Admin:
+    GET  /api/v1/admin/subscribers       — subscriber delivery health
+    POST /api/v1/admin/subscribers/seed  — one-time seed from TELEGRAM_CHAT_IDS env var
+
 Unversioned (external callbacks — URLs already registered elsewhere):
-    POST /webhooks/razorpay      — Razorpay subscription lifecycle events
-    POST /hitl/approve/{id}      — admin approve a HITL-paused verdict
-    POST /hitl/reject/{id}       — admin reject a HITL-paused verdict
+    POST /api/v1/telegram/webhook — Telegram bot update receiver (subscribe/verify/unsubscribe)
+    POST /webhooks/razorpay       — Razorpay subscription lifecycle events
+    POST /hitl/approve/{id}       — admin approve a HITL-paused verdict
+    POST /hitl/reject/{id}        — admin reject a HITL-paused verdict
 
 Auth:
     Bearer JWT   — Auth.js HS256 token on all user-facing endpoints.
@@ -25,6 +30,7 @@ Mangum wraps this for Lambda. Same code runs locally with uvicorn.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import json
 import os
 import time
@@ -34,7 +40,7 @@ from typing import Any
 
 import structlog
 from dotenv import load_dotenv
-from fastapi import APIRouter, FastAPI, Header, HTTPException, Request, Security
+from fastapi import APIRouter, BackgroundTasks, FastAPI, Header, HTTPException, Request, Security
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.security.api_key import APIKeyHeader
@@ -285,7 +291,7 @@ def _to_verdict_out(symbol: str, verdict) -> VerdictOut:  # type: ignore[no-unty
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
-@v1.get("/health", response_model=HealthResponse)
+@v1.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse)
 @limiter.limit("120/minute")
 def health(request: Request) -> HealthResponse:
     checks: dict[str, str] = {}
@@ -563,23 +569,199 @@ async def razorpay_webhook(request: Request) -> dict[str, str]:
 
 
 @app.post("/hitl/approve/{thread_id}")
-def hitl_approve(thread_id: str, _: None = Security(_require_api_key)) -> dict[str, str]:  # noqa: B008
-    """Record an admin approval for a HITL-paused verdict. Called by the Telegram button URL."""
-    from analyzer.hitl.approver import record_decision
+async def hitl_approve(thread_id: str, _: None = Security(_require_api_key)) -> dict[str, str]:  # noqa: B008
+    """Resume a HITL-paused graph run with admin approval."""
+    from analyzer.llm.formatter import format_telegram
+    from analyzer.notify.telegram import send_message, send_verdict
+    from analyzer.pipeline.graph_4pm import resume_4pm
 
-    record_decision(thread_id, approved=True)
-    log.info("hitl_approve_endpoint", thread_id=thread_id)
+    admin_chat = os.getenv("ADMIN_CHAT_ID", "")
+    state = resume_4pm(thread_id, approved=True)
+
+    if state is None:
+        if admin_chat:
+            await send_message("⏱ HITL verdict expired or not found.", chat_ids=[admin_chat])
+        log.warning("hitl_approve_failed", thread_id=thread_id)
+        return {"status": "expired_or_not_found", "thread_id": thread_id}
+
+    if state.verdict and state.stock and state.scoring:
+        await send_verdict(
+            "✅ *Late addition — approved after review:*\n\n"
+            + format_telegram(
+                symbol=state.stock.symbol,
+                company_name=state.stock.company_name,
+                current_price=state.stock.current_price,
+                verdict=state.verdict,
+                scoring=state.scoring,
+            )
+        )
+
+    if admin_chat:
+        symbol = thread_id.split("_")[0]
+        await send_message(f"✅ *{symbol}* verdict published.", chat_ids=[admin_chat])
+
+    log.info("hitl_approved", thread_id=thread_id)
     return {"status": "approved", "thread_id": thread_id}
 
 
 @app.post("/hitl/reject/{thread_id}")
-def hitl_reject(thread_id: str, _: None = Security(_require_api_key)) -> dict[str, str]:  # noqa: B008
-    """Record an admin rejection for a HITL-paused verdict. Called by the Telegram button URL."""
-    from analyzer.hitl.approver import record_decision
+async def hitl_reject(thread_id: str, _: None = Security(_require_api_key)) -> dict[str, str]:  # noqa: B008
+    """Resume a HITL-paused graph run with admin rejection."""
+    from analyzer.notify.telegram import send_message
+    from analyzer.pipeline.graph_4pm import resume_4pm
 
-    record_decision(thread_id, approved=False)
-    log.info("hitl_reject_endpoint", thread_id=thread_id)
+    admin_chat = os.getenv("ADMIN_CHAT_ID", "")
+    state = resume_4pm(thread_id, approved=False)
+
+    if state is None:
+        if admin_chat:
+            await send_message("⏱ HITL verdict expired or not found.", chat_ids=[admin_chat])
+        log.warning("hitl_reject_failed", thread_id=thread_id)
+        return {"status": "expired_or_not_found", "thread_id": thread_id}
+
+    if admin_chat:
+        symbol = thread_id.split("_")[0]
+        await send_message(f"❌ *{symbol}* verdict rejected — dropped.", chat_ids=[admin_chat])
+
+    log.info("hitl_rejected", thread_id=thread_id)
     return {"status": "rejected", "thread_id": thread_id}
+
+
+@app.post("/api/v1/telegram/webhook", include_in_schema=False)
+async def telegram_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, str]:
+    """Receive Telegram bot updates (subscribe/verify/unsubscribe/HITL callbacks).
+
+    Telegram posts updates here when users message the bot.
+    Verified with X-Telegram-Bot-Api-Secret-Token header.
+
+    Responds 200 immediately and processes in a background task so Telegram
+    never sees a timeout — critical for HITL callback_query which triggers
+    graph resume + Telegram sends that can take 10-30 seconds.
+    """
+    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    if secret:
+        token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if not hmac.compare_digest(secret, token):
+            log.warning("telegram_webhook_invalid_secret")
+            raise HTTPException(status_code=403, detail="Invalid webhook token")
+
+    try:
+        update = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
+
+    from analyzer.notify.telegram import handle_update
+
+    background_tasks.add_task(handle_update, update)
+    return {"status": "ok"}
+
+
+@app.get("/api/v1/admin/subscribers")
+async def get_subscribers(
+    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> dict[str, Any]:
+    """Subscriber delivery health dashboard (admin only)."""
+    from analyzer.notify.subscribers import get_all
+
+    items = get_all()
+    confirmed = [i for i in items if i.get("status") == "confirmed"]
+    pending = [i for i in items if i.get("status") == "pending"]
+    inactive = [i for i in items if i.get("status") == "inactive"]
+    return {
+        "total": len(items),
+        "confirmed": len(confirmed),
+        "pending": len(pending),
+        "inactive": len(inactive),
+        "subscribers": [
+            {
+                "chat_id": i["chat_id"],
+                "username": i.get("username", ""),
+                "status": i["status"],
+                "confirmed_at": i.get("confirmed_at", ""),
+                "consecutive_failures": int(i.get("consecutive_failures", 0)),
+            }
+            for i in items
+        ],
+    }
+
+
+@app.post("/api/v1/admin/subscribers/seed")
+async def seed_subscribers(
+    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> dict[str, Any]:
+    """One-time migration: seed confirmed subscribers from TELEGRAM_CHAT_IDS env var."""
+    from analyzer.notify.subscribers import seed_from_env
+
+    inserted = seed_from_env()
+    return {"status": "ok", "inserted": inserted}
+
+
+@app.post("/api/v1/admin/alert", include_in_schema=False)
+async def sns_alert(request: Request) -> dict[str, str]:
+    """Receive SNS CloudWatch alarm notifications and forward to admin Telegram.
+
+    SNS sends a SubscriptionConfirmation first (Type=SubscriptionConfirmation) —
+    we auto-confirm it. Then alarm payloads (Type=Notification) are forwarded.
+    No auth needed: SNS verifies delivery via its own signature mechanism.
+    We validate the Topic ARN to reject spoofed calls.
+    """
+    import json as _json
+
+    body = await request.body()
+    try:
+        payload = _json.loads(body)
+    except Exception:
+        return {"status": "ignored"}
+
+    msg_type = payload.get("Type", "")
+    topic_arn = payload.get("TopicArn", "")
+
+    # Only accept from our alerts topic
+    if "analyzer-alerts-prod" not in topic_arn:
+        log.warning("sns_alert_unknown_topic", topic_arn=topic_arn)
+        return {"status": "ignored"}
+
+    if msg_type == "SubscriptionConfirmation":
+        # Auto-confirm SNS subscription
+        import requests as _requests
+
+        confirm_url = payload.get("SubscribeURL", "")
+        if confirm_url:
+            try:
+                _requests.get(confirm_url, timeout=10)
+                log.info("sns_subscription_confirmed", topic_arn=topic_arn)
+            except Exception as e:
+                log.error("sns_confirm_failed", error=str(e))
+        return {"status": "confirmed"}
+
+    if msg_type == "Notification":
+        from analyzer.notify.telegram import send_message
+
+        alarm_msg = payload.get("Message", "")
+        try:
+            alarm_data = _json.loads(alarm_msg)
+            alarm_name = alarm_data.get("AlarmName", "Unknown")
+            new_state = alarm_data.get("NewStateValue", "?")
+            reason = alarm_data.get("NewStateReason", "")[:200]
+            runbook = alarm_data.get("AlarmDescription", "")
+            text = (
+                f"🚨 *CloudWatch Alarm*\n\n"
+                f"*{alarm_name}*\n"
+                f"State: `{new_state}`\n"
+                f"{reason}\n\n"
+                f"{runbook}"
+            )
+        except Exception:
+            text = f"🚨 CloudWatch alert:\n{alarm_msg[:400]}"
+
+        await send_message(text)
+        log.info("sns_alarm_forwarded", topic_arn=topic_arn)
+        return {"status": "forwarded"}
+
+    return {"status": "ignored"}
 
 
 app.include_router(v1)

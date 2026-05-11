@@ -1920,6 +1920,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "langfuse" },
     { name = "langgraph" },
+    { name = "langgraph-checkpoint-aws" },
     { name = "langsmith" },
     { name = "litellm" },
     { name = "mangum" },
@@ -1992,6 +1993,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'notebook'", specifier = ">=1.0" },
     { name = "langfuse", specifier = ">=2.0" },
     { name = "langgraph", specifier = ">=0.2" },
+    { name = "langgraph-checkpoint-aws", specifier = ">=1.0" },
     { name = "langsmith", specifier = ">=0.1" },
     { name = "litellm", specifier = ">=1.83.0" },
     { name = "mangum", specifier = ">=0.17" },
@@ -2713,6 +2715,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2e/f2/cf8086e1f1a3358d9228805614e72602c281b18307f3fae64a5b854aad2d/langgraph_checkpoint-4.0.2.tar.gz", hash = "sha256:4f6f99cba8e272deabf81b2d8cdc96582af07a57a6ad591cdf216bb310497039", size = 160810, upload-time = "2026-04-15T21:03:00.062Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b9/5a/6dba29dd89b0a46ae21c707da0f9d17e94f27d3e481ed15bc99d6bd20aa6/langgraph_checkpoint-4.0.2-py3-none-any.whl", hash = "sha256:59b0f29216128a629c58dd07c98aa004f82f51805d5573126ffb419b753ff253", size = 51000, upload-time = "2026-04-15T21:02:59.096Z" },
+]
+
+[[package]]
+name = "langgraph-checkpoint-aws"
+version = "1.0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "langgraph" },
+    { name = "langgraph-checkpoint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fd/3d/2d5ba436de1884ba18f83dff2a1c34c94dc3aa30584be1c3dce036e5d1f2/langgraph_checkpoint_aws-1.0.7.tar.gz", hash = "sha256:03d33741d06c1ccc79c3a893b1ccd6e0082a037783217b50aae5b22a880b6ee6", size = 291227, upload-time = "2026-04-14T08:11:05.878Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/12/1b26ca0043f1f15a45c7eead33820e3f09b5fbe8f0d4f269c62f1368af81/langgraph_checkpoint_aws-1.0.7-py3-none-any.whl", hash = "sha256:fbfe20fa18bd58be703549ad5d47d259c0867e63fb6c19617d6aa15954ea1261", size = 159451, upload-time = "2026-04-14T08:11:04.392Z" },
 ]
 
 [[package]]
