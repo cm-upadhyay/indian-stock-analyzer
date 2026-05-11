@@ -1,0 +1,68 @@
+name: Deploy API Lambda
+
+on:
+  push:
+    branches: [main]
+    paths:
+      # Only rebuild API image when relevant files change
+      - 'src/**'
+      - 'Dockerfile'
+      - 'pyproject.toml'
+      - 'uv.lock'
+
+permissions:
+  id-token: write   # needed for OIDC token request
+  contents: read
+
+jobs:
+  deploy-api:
+    name: Build + push API image → update Lambda
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: us-east-1
+      ECR_REPO: indian-stock-analyzer
+      LAMBDA_FUNCTION: analyzer-api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE="${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+          docker build -t "${IMAGE}" .
+          docker push "${IMAGE}"
+          # Also tag as :latest for manual deploys / deploy.sh compatibility
+          docker tag "${IMAGE}" "${ECR_REGISTRY}/${ECR_REPO}:latest"
+          docker push "${ECR_REGISTRY}/${ECR_REPO}:latest"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Lambda function code
+        env:
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          aws lambda update-function-code \
+            --function-name "${LAMBDA_FUNCTION}" \
+            --image-uri "${IMAGE}" \
+            --region "${AWS_REGION}" \
+            --no-cli-pager
+
+          # Wait for update to complete (Lambda can't be invoked mid-update)
+          aws lambda wait function-updated \
+            --function-name "${LAMBDA_FUNCTION}" \
+            --region "${AWS_REGION}"
+
+          echo "Lambda updated to ${IMAGE}"

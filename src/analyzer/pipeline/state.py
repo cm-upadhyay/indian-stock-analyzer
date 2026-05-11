@@ -72,8 +72,11 @@ class AnalysisState(BaseModel):
     # Task 3.10 — NeMo rails: True if output rail blocked the verdict
     nemo_blocked: bool = False
 
-    # Task 3.11 — HITL: True=approved, False=rejected, None=not triggered
+    # Task 3.11 — HITL:
+    #   hitl_approved: True=approved, False=rejected, None=not triggered or pending
+    #   hitl_pending:  True = interrupt() fired, awaiting admin decision (not yet published)
     hitl_approved: bool | None = None
+    hitl_pending: bool = False
 
     # ── Error tracking ────────────────────────────────────────────────────────
     error: str | None = None
