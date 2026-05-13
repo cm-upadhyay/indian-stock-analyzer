@@ -10,3 +10,9 @@ CVE-2026-42271
 CVE-2026-44843
 # CVE-2026-4046 — waiting on patched Amazon Linux packages in Lambda base image.
 CVE-2026-4046
+# Go stdlib CVEs in aws-lambda-rie binary (AWS-controlled, not present in deployed Lambda image).
+CVE-2026-33811
+CVE-2026-33814
+CVE-2026-39820
+CVE-2026-39836
+CVE-2026-42499

@@ -1,7 +1,7 @@
 locals {
-  account_id        = var.account_id
-  region            = var.region
-  ecr_base          = "${local.account_id}.dkr.ecr.${local.region}.amazonaws.com"
+  account_id = var.account_id
+  region     = var.region
+  ecr_base   = "${local.account_id}.dkr.ecr.${local.region}.amazonaws.com"
   # Strip https:// and trailing slash from Lambda function URL to get bare domain
   lambda_url_domain = trimsuffix(replace(aws_lambda_function_url.api.function_url, "https://", ""), "/")
 }
@@ -337,9 +337,9 @@ resource "aws_scheduler_schedule" "morning_daily" {
 #   AmazonECS_FullAccess    → scoped to RunTask + PassRole on project cluster/tasks
 
 locals {
-  ssm_prefix_arn  = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/indian-stock-analyzer/prod/*"
-  ssm_path_arn    = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/indian-stock-analyzer/prod"
-  s3_bucket_arn   = "arn:aws:s3:::analyzer-data-prod"
+  ssm_prefix_arn = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/indian-stock-analyzer/prod/*"
+  ssm_path_arn   = "arn:aws:ssm:${local.region}:${local.account_id}:parameter/indian-stock-analyzer/prod"
+  s3_bucket_arn  = "arn:aws:s3:::analyzer-data-prod"
 
   # Shared by Lambda role, ECS execution role, and ECS task role
   app_least_privilege_policy = jsonencode({
@@ -400,9 +400,9 @@ locals {
         }
       },
       {
-        Sid      = "PassRoleToECS"
-        Effect   = "Allow"
-        Action   = ["iam:PassRole"]
+        Sid    = "PassRoleToECS"
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
         Resource = [
           aws_iam_role.ecs_execution.arn,
           aws_iam_role.ecs_task.arn,
@@ -479,9 +479,9 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "ECRAuth"
-        Effect = "Allow"
-        Action = ["ecr:GetAuthorizationToken"]
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = ["ecr:GetAuthorizationToken"]
         Resource = ["*"]
       },
       {
@@ -499,9 +499,9 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         Resource = "arn:aws:ecr:${local.region}:${local.account_id}:repository/indian-stock-analyzer"
       },
       {
-        Sid    = "LambdaUpdateCode"
-        Effect = "Allow"
-        Action = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+        Sid      = "LambdaUpdateCode"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
         Resource = "arn:aws:lambda:${local.region}:${local.account_id}:function:analyzer-api"
       },
     ]
@@ -538,7 +538,7 @@ resource "aws_sns_topic_subscription" "alerts_lambda" {
   topic_arn = aws_sns_topic.alerts.arn
   protocol  = "https"
   # CloudFront URL is known after first apply — set this after initial deploy
-  endpoint  = "${module.cloudfront_api.url}/api/v1/admin/alert"
+  endpoint = "${module.cloudfront_api.url}/api/v1/admin/alert"
 
   lifecycle {
     ignore_changes = [endpoint]
@@ -549,9 +549,9 @@ locals {
   alarm_actions = [aws_sns_topic.alerts.arn]
 
   lambda_functions = {
-    api      = { name = "analyzer-api",      log_group = "/aws/lambda/analyzer-api" }
+    api      = { name = "analyzer-api", log_group = "/aws/lambda/analyzer-api" }
     pipeline = { name = "analyzer-pipeline", log_group = "/aws/lambda/analyzer-pipeline" }
-    morning  = { name = "analyzer-morning",  log_group = "/aws/lambda/analyzer-morning" }
+    morning  = { name = "analyzer-morning", log_group = "/aws/lambda/analyzer-morning" }
   }
 }
 
@@ -638,10 +638,10 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_throttles" {
 
 # WAF: blocked requests ≥ 50 in 5 min (anomaly / attack pattern)
 resource "aws_cloudwatch_metric_alarm" "waf_blocked" {
-  alarm_name          = "waf-blocked-requests"
-  alarm_description   = "WAF blocking ≥ 50 requests in 5 min — possible attack pattern"
-  namespace           = "AWS/WAFV2"
-  metric_name         = "BlockedRequests"
+  alarm_name        = "waf-blocked-requests"
+  alarm_description = "WAF blocking ≥ 50 requests in 5 min — possible attack pattern"
+  namespace         = "AWS/WAFV2"
+  metric_name       = "BlockedRequests"
   dimensions = {
     WebACL = "analyzer-api-waf"
     Rule   = "ALL"

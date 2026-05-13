@@ -159,9 +159,8 @@ jobs:
       - name: Validate OpenAPI schema
         run: |
           uv run schemathesis run http://localhost:8000/openapi.json \
-            --validate-schema=true \
-            --dry-run \
-            --checks=not_a_server_error
+            --checks=not_a_server_error \
+            --phases=examples
 
   # ── Terraform CI ──────────────────────────────────────────────────────────────
 

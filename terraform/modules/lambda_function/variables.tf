@@ -1,6 +1,6 @@
 variable "function_name" { type = string }
-variable "image_uri"     { type = string }
-variable "role_arn"      { type = string }
+variable "image_uri" { type = string }
+variable "role_arn" { type = string }
 
 variable "memory_size" {
   type    = number
