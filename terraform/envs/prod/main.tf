@@ -390,8 +390,8 @@ locals {
         Effect = "Allow"
         Action = ["ecs:RunTask"]
         Resource = [
-          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/indian-stock-analyzer-pipeline",
-          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/indian-stock-analyzer-morning",
+          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/indian-stock-analyzer-pipeline:*",
+          "arn:aws:ecs:${local.region}:${local.account_id}:task-definition/indian-stock-analyzer-morning:*",
         ]
         Condition = {
           ArnLike = {
@@ -501,7 +501,7 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
       {
         Sid    = "LambdaUpdateCode"
         Effect = "Allow"
-        Action = ["lambda:UpdateFunctionCode", "lambda:GetFunction"]
+        Action = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
         Resource = "arn:aws:lambda:${local.region}:${local.account_id}:function:analyzer-api"
       },
     ]

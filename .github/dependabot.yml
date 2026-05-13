@@ -7,7 +7,6 @@ updates:
       interval: "weekly"
       day: "monday"
     groups:
-      # Security patches merged immediately; dev tooling batched weekly
       dev-tools:
         patterns: ["ruff", "mypy", "pytest*", "bandit*", "pip-audit*", "cyclonedx*"]
         dependency-type: "development"
@@ -15,6 +14,9 @@ updates:
     labels:
       - "dependencies"
       - "python"
+    # Auto-merge patch-level updates when CI is green
+    auto-merge: true
+    versioning-strategy: increase-if-necessary
 
   # GitHub Actions version pins
   - package-ecosystem: "github-actions"
@@ -26,6 +28,7 @@ updates:
     labels:
       - "dependencies"
       - "ci"
+    auto-merge: true
 
   # Frontend Node/npm dependencies
   - package-ecosystem: "npm"
@@ -37,3 +40,5 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
+    auto-merge: true
+    versioning-strategy: increase-if-necessary

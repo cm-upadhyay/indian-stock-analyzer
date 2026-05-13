@@ -28,6 +28,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body className={`${inter.className} bg-gray-100 text-gray-900 antialiased`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow"
+        >
+          Skip to main content
+        </a>
         <AuthProvider session={session}>
           <QueryProvider>
             <Nav />
@@ -45,6 +51,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 ·{" "}
                 <a href="/privacy" className="underline hover:text-gray-600">
                   Privacy
+                </a>{" "}
+                ·{" "}
+                <a href="/terms" className="underline hover:text-gray-600">
+                  Terms
                 </a>{" "}
                 ·{" "}
                 <a href="/model-card" className="underline hover:text-gray-600">
