@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Nav />
             <main id="main-content">{children}</main>
             <footer className="mt-16 border-t border-gray-200 bg-white py-6 text-center">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-gray-500">
                 Indian Stock Analyzer ·{" "}
                 <a href="/accuracy" className="underline hover:text-gray-600">
                   Accuracy

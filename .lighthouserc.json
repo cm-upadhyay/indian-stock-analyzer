@@ -18,7 +18,13 @@
         "html-has-lang":             ["error", {"minScore": 1}],
         "image-alt":                 ["error", {"minScore": 1}],
         "link-name":                 ["error", {"minScore": 1}],
-        "bypass":                    ["error", {"minScore": 1}]
+        "bypass":                    ["error", {"minScore": 1}],
+        "is-crawlable":              ["off"],
+        "bf-cache":                  ["off"],
+        "errors-in-console":         ["off"],
+        "unused-javascript":         ["warn", {"maxLength": 5}],
+        "legacy-javascript-insight": ["warn", {"minScore": 0}],
+        "aria-allowed-role":         ["error", {"minScore": 1}]
       }
     },
     "upload": {
