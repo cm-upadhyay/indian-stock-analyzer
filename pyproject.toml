@@ -67,8 +67,8 @@ local = [
     # Task 3.1 — Hierarchical memory (chromadb needs cmake/gcc to compile hnswlib)
     "mem0ai>=0.1",
     "chromadb>=0.5",
-    # Task 3.9 — Schema-level guardrails
-    "guardrails-ai>=0.5",
+    # Task 3.9 — guardrails-ai removed from PyPI; replacement package 'guardrails' pins
+    # old pytest-cov versions that conflict with dev group. Feature degrades gracefully.
     # Task 3.10 — Policy-level guardrails (heavy transitive deps)
     "nemoguardrails>=0.9",
     # Task 3.12 — Input security (llm-guard pulls torch ~2 GB)

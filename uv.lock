@@ -1180,15 +1180,6 @@ wheels = [
 ]
 
 [[package]]
-name = "diff-match-patch"
-version = "20241021"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0e/ad/32e1777dd57d8e85fa31e3a243af66c538245b8d64b7265bec9a61f2ca33/diff_match_patch-20241021.tar.gz", hash = "sha256:beae57a99fa48084532935ee2968b8661db861862ec82c6f21f4acdd6d835073", size = 39962, upload-time = "2024-10-21T19:41:21.094Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/bb/2aa9b46a01197398b901e458974c20ed107935c26e44e37ad5b0e5511e44/diff_match_patch-20241021-py3-none-any.whl", hash = "sha256:93cea333fb8b2bc0d181b0de5e16df50dd344ce64828226bda07728818936782", size = 43252, upload-time = "2024-10-21T19:41:19.914Z" },
-]
-
-[[package]]
 name = "distlib"
 version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1668,69 +1659,6 @@ wheels = [
 ]
 
 [[package]]
-name = "guardrails-ai"
-version = "0.9.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "diff-match-patch" },
-    { name = "faker" },
-    { name = "guardrails-api-client" },
-    { name = "guardrails-hub-types" },
-    { name = "jsonref" },
-    { name = "jsonschema", extra = ["format-nongpl"] },
-    { name = "langchain-core" },
-    { name = "litellm" },
-    { name = "lxml" },
-    { name = "openai" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc" },
-    { name = "opentelemetry-exporter-otlp-proto-http" },
-    { name = "opentelemetry-sdk" },
-    { name = "pip" },
-    { name = "pydantic" },
-    { name = "pydash" },
-    { name = "pyjwt" },
-    { name = "python-dateutil" },
-    { name = "requests" },
-    { name = "rich" },
-    { name = "rstr" },
-    { name = "semver" },
-    { name = "tenacity" },
-    { name = "tiktoken" },
-    { name = "typer" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/62/2b28a8f7f9fbea06cdb76885a44ec0a5e0bad758b53d317c7039a5dfd164/guardrails_ai-0.9.2.tar.gz", hash = "sha256:4c136b7ef9ef1562098cbe91338f71fe91824cbf1393f3e5b3a0d8a393f55851", size = 170657, upload-time = "2026-03-16T18:22:00.903Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/67/b1db74bf7bd6cbbdd5e6f37880ece08e9d6a785cf955c8ba652ed43ec880/guardrails_ai-0.9.2-py3-none-any.whl", hash = "sha256:530758c544383c23f6a755670673988a5446c90596102d629cc89311a3616fb7", size = 237653, upload-time = "2026-03-16T18:22:02.116Z" },
-]
-
-[[package]]
-name = "guardrails-api-client"
-version = "0.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "lazy-imports" },
-    { name = "pydantic" },
-    { name = "python-dateutil" },
-    { name = "typing-extensions" },
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/15/43/99c9dad97e8cfca2e17e1eeefa654c8d6099108ac2b540bae762b75d14db/guardrails_api_client-0.4.0.tar.gz", hash = "sha256:05f636bdc332fd3304007f564bca92b43ce9beb531ea3606d2cbdcbe97ab2c6f", size = 57727, upload-time = "2025-09-19T18:47:20.434Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/5c/d9fc258f5b2b9294ff7312d7b29c0395cb26167effccdb8c34cf7f96dcdb/guardrails_api_client-0.4.0-py3-none-any.whl", hash = "sha256:3c936a1afb3373828c63a4f1cd17b876621a0e25dc334706bf63c041e03f1a90", size = 110200, upload-time = "2025-09-19T18:47:19.084Z" },
-]
-
-[[package]]
-name = "guardrails-hub-types"
-version = "0.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a4/e7/6fa86cbcf9e7e144e2a2cbad8c2df791a06567b7a7731a055c645a7820a8/guardrails_hub_types-0.0.4.tar.gz", hash = "sha256:a5ad863fd6b354e41c3d83d8c1e835f7243a0ae0ec944b6601d1e3ee5d806a51", size = 20587, upload-time = "2024-08-12T22:51:02.295Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e3/f8/e543dda7db28afa1b8b7d6219f6e08d419736b43a679e054b8134b98c8b4/guardrails_hub_types-0.0.4-py3-none-any.whl", hash = "sha256:ad86faecc142e853d6c6fa24ecb50723c86f834fbe1f2e6b932f2921a08b60b3", size = 36263, upload-time = "2024-08-12T22:51:00.725Z" },
-]
-
-[[package]]
 name = "h11"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2047,7 +1975,6 @@ dev = [
 ]
 local = [
     { name = "chromadb" },
-    { name = "guardrails-ai" },
     { name = "llm-guard" },
     { name = "mem0ai" },
     { name = "nemoguardrails" },
@@ -2118,7 +2045,6 @@ dev = [
 ]
 local = [
     { name = "chromadb", specifier = ">=0.5" },
-    { name = "guardrails-ai", specifier = ">=0.5" },
     { name = "llm-guard", specifier = ">=0.3" },
     { name = "mem0ai", specifier = ">=0.1" },
     { name = "nemoguardrails", specifier = ">=0.9" },
@@ -2380,15 +2306,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/18/c7/af399a2e7a67fd18d63c40c5e62d3af4e67b836a2107468b6a5ea24c4304/jsonpointer-3.1.1.tar.gz", hash = "sha256:0b801c7db33a904024f6004d526dcc53bbb8a4a0f4e32bfd10beadf60adf1900", size = 9068, upload-time = "2026-03-23T22:32:32.458Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/6a/a83720e953b1682d2d109d3c2dbb0bc9bf28cc1cbc205be4ef4be5da709d/jsonpointer-3.1.1-py3-none-any.whl", hash = "sha256:8ff8b95779d071ba472cf5bc913028df06031797532f08a7d5b602d8b2a488ca", size = 7659, upload-time = "2026-03-23T22:32:31.568Z" },
-]
-
-[[package]]
-name = "jsonref"
-version = "1.1.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/aa/0d/c1f3277e90ccdb50d33ed5ba1ec5b3f0a242ed8c1b1a85d3afeb68464dca/jsonref-1.1.0.tar.gz", hash = "sha256:32fe8e1d85af0fdefbebce950af85590b22b60f9e95443176adbde4e1ecea552", size = 8814, upload-time = "2023-01-16T16:10:04.455Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/ec/e1db9922bceb168197a558a2b8c03a7963f1afe93517ddd3cf99f202f996/jsonref-1.1.0-py3-none-any.whl", hash = "sha256:590dc7773df6c21cbf948b5dac07a72a251db28b0238ceecce0a2abfa8ec30a9", size = 9425, upload-time = "2023-01-16T16:10:02.255Z" },
 ]
 
 [[package]]
@@ -2903,15 +2820,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/da/34/28fff3ab31ccff1fd4f6c7c7b0ceb2b6968d8ea4950663eadcb5720591a0/lark-1.3.1.tar.gz", hash = "sha256:b426a7a6d6d53189d318f2b6236ab5d6429eaf09259f1ca33eb716eed10d2905", size = 382732, upload-time = "2025-10-27T18:25:56.653Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/82/3d/14ce75ef66813643812f3093ab17e46d3a206942ce7376d31ec2d36229e7/lark-1.3.1-py3-none-any.whl", hash = "sha256:c629b661023a014c37da873b4ff58a817398d12635d3bbb2c5a03be7fe5d1e12", size = 113151, upload-time = "2025-10-27T18:25:54.882Z" },
-]
-
-[[package]]
-name = "lazy-imports"
-version = "1.2.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/67/04432aae0c1e2729bff14e1841f4a3fb63a9e354318e66622251487760c3/lazy_imports-1.2.0.tar.gz", hash = "sha256:3c546b3c1e7c4bf62a07f897f6179d9feda6118e71ef6ecc47a339cab3d2e2d9", size = 24470, upload-time = "2025-12-28T13:51:51.218Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/62/60ed24fa8707f10c1c5aef94791252b820be3dd6bdfc6e2fcdb08bc8912f/lazy_imports-1.2.0-py3-none-any.whl", hash = "sha256:97134d6552e2ba16f1a278e316f05313ab73b360e848e40d593d08a5c2406fdf", size = 18681, upload-time = "2025-12-28T13:51:49.802Z" },
 ]
 
 [[package]]
@@ -5234,18 +5142,6 @@ yaml = [
 ]
 
 [[package]]
-name = "pydash"
-version = "8.0.6"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/75/c1/1c55272f49d761cec38ddb80be9817935b9c91ebd6a8988e10f532868d56/pydash-8.0.6.tar.gz", hash = "sha256:b2821547e9723f69cf3a986be4db64de41730be149b2641947ecd12e1e11025a", size = 164338, upload-time = "2026-01-17T16:42:56.576Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/b7/cc5e7974699db40014d58c7dd7c4ad4ffc244d36930dc9ec7d06ee67d7a9/pydash-8.0.6-py3-none-any.whl", hash = "sha256:ee70a81a5b292c007f28f03a4ee8e75c1f5d7576df5457b836ec7ab2839cc5d0", size = 101561, upload-time = "2026-01-17T16:42:55.448Z" },
-]
-
-[[package]]
 name = "pyfiglet"
 version = "1.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -5868,15 +5764,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rstr"
-version = "3.2.2"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9f/80/d7449656d45a776b7a443ce3af4eb97c4debe416a1a80f60311c7cfd02ff/rstr-3.2.2.tar.gz", hash = "sha256:c4a564d4dfb4472d931d145c43d1cf1ad78c24592142e7755b8866179eeac012", size = 13560, upload-time = "2023-10-11T20:07:57.422Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/8c/a0f14f2fcdd846839c478048032b2fc93293deaa936ff6751f27dcf50995/rstr-3.2.2-py3-none-any.whl", hash = "sha256:f39195d38da1748331eeec52f1276e71eb6295e7949beea91a5e9af2340d7b3b", size = 10030, upload-time = "2023-10-11T20:07:55.873Z" },
-]
-
-[[package]]
 name = "ruff"
 version = "0.15.11"
 source = { registry = "https://pypi.org/simple" }
@@ -5961,15 +5848,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/50/e5/723a9e45b4498353263dc7eec949b91609508c82338818f598773e22a748/schemathesis-4.18.2.tar.gz", hash = "sha256:f12c557056a452685fc96dadf4c858ab0a0cec1e6828026e6d63f7bdcfd2f497", size = 2050610, upload-time = "2026-05-11T18:33:10.762Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/1b/6472c3eda601238874448465df1c9152d0c5ea1339b2f3aafe2abe2f7315/schemathesis-4.18.2-py3-none-any.whl", hash = "sha256:9d03154b8da155cc02a0b6239762b81f3cd6aee3d6cf4509862a665b06f5836e", size = 685514, upload-time = "2026-05-11T18:33:08.559Z" },
-]
-
-[[package]]
-name = "semver"
-version = "3.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730, upload-time = "2025-01-24T13:19:27.617Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912, upload-time = "2025-01-24T13:19:24.949Z" },
 ]
 
 [[package]]
