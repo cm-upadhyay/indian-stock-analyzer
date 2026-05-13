@@ -42,3 +42,7 @@ updates:
       - "frontend"
     auto-merge: true
     versioning-strategy: increase-if-necessary
+    ignore:
+      # eslint-config-next does not support eslint v10 yet; hold at v9
+      - dependency-name: "eslint"
+        versions: ["10.x", ">=10"]
