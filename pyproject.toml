@@ -43,7 +43,7 @@ dependencies = [
     # Phase 3B — Do First 3: Tavily macro-news MCP tool
     "tavily-python>=0.3",
     # Phase 3B — Task 3.14: Observability (all lightweight HTTP clients / pure Python)
-    "langfuse>=2.0",
+    "langfuse>=4.6.1",
     "sentry-sdk>=2.0",
     "opentelemetry-sdk>=1.20",
     "opentelemetry-instrumentation-fastapi>=0.50b0",
