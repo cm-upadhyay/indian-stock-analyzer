@@ -91,6 +91,10 @@ dev = [
     "bandit[toml]>=1.7",
     "pip-audit>=2.0",
     "cyclonedx-bom>=4.0",
+    # Phase 4 — Task 4.14: integration tests + contract testing
+    "moto[s3,dynamodb,ssm,sns]>=5.0",
+    "schemathesis>=3.25",
+    "httpx>=0.27",
 ]
 
 [build-system]
