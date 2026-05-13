@@ -1,9 +1,7 @@
 name: E2E + Lighthouse
 
 on:
-  pull_request:
-    branches: [main, dev]
-  # Re-run on Vercel deployment completion (triggered by deployment_status event)
+  # Triggered by Vercel posting a deployment_status webhook when preview is ready
   deployment_status:
 
 jobs:
@@ -11,9 +9,7 @@ jobs:
   e2e-playwright:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+    if: github.event.deployment_status.state == 'success'
     env:
       PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url || 'http://localhost:3000' }}
     steps:
