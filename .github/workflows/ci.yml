@@ -186,6 +186,8 @@ jobs:
         run: |
           tflint --init
           tflint --recursive --minimum-failure-severity=error
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Nightly drift detection ───────────────────────────────────────────────────
 
