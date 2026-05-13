@@ -1,0 +1,35 @@
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 1,
+      "settings": {
+        "chromeFlags": "--no-sandbox --disable-dev-shm-usage"
+      }
+    },
+    "assert": {
+      "preset": "lighthouse:no-pwa",
+      "assertions": {
+        "categories:performance":    ["warn",  {"minScore": 0.85}],
+        "categories:accessibility":  ["error", {"minScore": 0.95}],
+        "categories:best-practices": ["warn",  {"minScore": 0.90}],
+        "categories:seo":            ["warn",  {"minScore": 0.90}],
+        "color-contrast":            ["error", {"minScore": 1}],
+        "document-title":            ["error", {"minScore": 1}],
+        "html-has-lang":             ["error", {"minScore": 1}],
+        "image-alt":                 ["error", {"minScore": 1}],
+        "link-name":                 ["error", {"minScore": 1}],
+        "bypass":                    ["error", {"minScore": 1}],
+        "is-crawlable":              ["off"],
+        "bf-cache":                  ["off"],
+        "errors-in-console":         ["off"],
+        "unused-javascript":         ["warn", {"maxLength": 5}],
+        "legacy-javascript-insight": ["warn", {"minScore": 0}],
+        "aria-allowed-role":         ["error", {"minScore": 1}],
+        "uses-rel-preconnect":       ["warn",  {"maxLength": 2}]
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

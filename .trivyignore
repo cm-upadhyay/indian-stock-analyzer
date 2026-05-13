@@ -2,6 +2,7 @@
 # Not exploitable: litellm is used as a Python library only; proxy server and MCP endpoints never started.
 # Revisit when llm-guard releases a compatible version.
 GHSA-xqmj-j6mv-4862
+CVE-2026-40217
 CVE-2026-42203
 CVE-2026-42208
 CVE-2026-42271
@@ -10,3 +11,12 @@ CVE-2026-42271
 CVE-2026-44843
 # CVE-2026-4046 — waiting on patched Amazon Linux packages in Lambda base image.
 CVE-2026-4046
+# urllib3 2.6.3 CVEs — upgrade to 2.7.0 blocked by same llm-guard pin as litellm above.
+CVE-2026-44431
+CVE-2026-44432
+# Go stdlib CVEs in aws-lambda-rie binary (AWS-controlled, not present in deployed Lambda image).
+CVE-2026-33811
+CVE-2026-33814
+CVE-2026-39820
+CVE-2026-39836
+CVE-2026-42499

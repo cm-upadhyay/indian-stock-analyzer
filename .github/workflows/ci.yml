@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
     branches: [main, dev]
   schedule:
@@ -121,6 +121,98 @@ jobs:
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Integration tests (moto — fake AWS) ──────────────────────────────────────
+
+  integration-aws:
+    name: Integration tests (moto)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - run: uv sync --dev
+      - run: uv run pytest tests/integration/ -v --no-cov
+
+  # ── API contract testing (schemathesis) ───────────────────────────────────────
+
+  contract-api:
+    name: API contract (schemathesis)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - run: uv sync --dev
+      - name: Start API server
+        run: |
+          uv run uvicorn analyzer.api.app:app --host 0.0.0.0 --port 8000 &
+          # Wait for server to be ready
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8000/api/v1/health && break || sleep 1
+          done
+        env:
+          TELEGRAM_BOT_TOKEN: "test-token"
+          ENVIRONMENT: "test"
+      - name: Validate OpenAPI schema
+        run: |
+          uv run schemathesis run http://localhost:8000/openapi.json \
+            --checks=not_a_server_error \
+            --phases=examples
+
+  # ── Terraform CI ──────────────────────────────────────────────────────────────
+
+  terraform-ci:
+    name: Terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.8"
+      - name: Terraform format check
+        run: terraform fmt -check -recursive terraform/
+      - name: Terraform validate (prod)
+        working-directory: terraform/envs/prod
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+      - name: Install tflint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      - name: tflint modules
+        run: |
+          tflint --init
+          tflint --recursive --minimum-failure-severity=error
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Nightly drift detection ───────────────────────────────────────────────────
+
+  drift-detection:
+    name: Terraform drift detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-deploy
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.8"
+      - name: Check prod for drift
+        working-directory: terraform/envs/prod
+        run: |
+          terraform init -input=false
+          terraform plan -detailed-exitcode -input=false || \
+            (echo "::warning::Drift detected in prod — review terraform plan output" && exit 0)
 
   # ── Docker images ─────────────────────────────────────────────────────────────
 

@@ -30,13 +30,12 @@ export default function Nav() {
           Indian Stock Analyzer
         </Link>
 
-        <div className="flex flex-1 gap-4" role="list">
+        <div className="flex flex-1 gap-4">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               className="text-sm text-gray-500 hover:text-gray-900"
-              role="listitem"
             >
               {l.label}
             </Link>
