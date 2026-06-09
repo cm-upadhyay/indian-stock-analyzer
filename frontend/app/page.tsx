@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import { signIn, useSession } from "next-auth/react"
-import { fetchLatest, fetchMorning, PaywallError } from "@/lib/api"
+import { fetchLatest, fetchProLatest, fetchMe, fetchMorning, PaywallError } from "@/lib/api"
 import VerdictCard from "@/components/verdict-card"
 import MorningCard from "@/components/morning-card"
 import SignalBadge from "@/components/signal-badge"
@@ -166,16 +166,24 @@ function MorningSection({ eveningDate }: { eveningDate: string }) {
 
 export default function Home() {
   const { status } = useSession()
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["latest"],
-    queryFn: fetchLatest,
+  const { data: me, isError: isMeError } = useQuery({
+    queryKey: ["me"],
+    queryFn: fetchMe,
     enabled: status === "authenticated",
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })
+  const isPro = me?.subscription_status === "active"
+  const { data, isLoading, isError } = useQuery({
+    queryKey: isPro ? ["pro-latest"] : ["latest"],
+    queryFn: isPro ? fetchProLatest : fetchLatest,
+    enabled: status === "authenticated" && me !== undefined,
     staleTime: 5 * 60 * 1000,
   })
 
-  if (status === "loading" || (status === "authenticated" && isLoading)) return <LoadingState />
+  if (status === "loading" || (status === "authenticated" && !isMeError && isLoading)) return <LoadingState />
   if (status === "unauthenticated") return <ErrorState isAuth={true} />
-  if (isError) return <ErrorState />
+  if (isMeError || isError) return <ErrorState />
 
   const today = new Date().toISOString().slice(0, 10)
   if (!data || data.count === 0) return <EmptyState date={data?.date ?? today} />
@@ -221,15 +229,14 @@ export default function Home() {
       <VerdictGroup label="Hold" verdicts={hold} signal="HOLD" />
       <VerdictGroup label="Sell" verdicts={sell} signal="SELL" />
 
-      {/* Paywall banner — shown when free user is seeing a truncated list */}
-      {data.total_count > data.count && (
+      {/* Paywall banner — shown for free-tier users */}
+      {!isPro && (
         <div className="mt-10 rounded-xl border border-gray-200 bg-gray-50 px-8 py-7 text-center">
           <p className="text-lg font-semibold text-gray-800">
-            🔒 {data.total_count - data.count} more stocks hidden
+            🔒 Showing top 10 picks
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            Upgrade to Pro to see all {data.total_count} picks, get morning follow-ups,
-            and Telegram delivery
+            Upgrade to Pro to see all picks, get morning follow-ups, and Telegram delivery
           </p>
           <Link
             href="/subscribe"

@@ -19,7 +19,6 @@ export const VerdictSchema = z.object({
 export const LatestResponseSchema = z.object({
   date: z.string(),
   count: z.number().int(),
-  total_count: z.number().int().default(0),
   analyses: z.array(VerdictSchema),
 })
 

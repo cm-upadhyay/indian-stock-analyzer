@@ -39,6 +39,10 @@ export async function fetchLatest(): Promise<LatestResponse> {
   return LatestResponseSchema.parse(await apiFetch("/api/latest"))
 }
 
+export async function fetchProLatest(): Promise<LatestResponse> {
+  return LatestResponseSchema.parse(await apiFetch("/api/pro-latest"))
+}
+
 export async function fetchMorning(): Promise<MorningResponse> {
   return MorningResponseSchema.parse(await apiFetch("/api/morning"))
 }
