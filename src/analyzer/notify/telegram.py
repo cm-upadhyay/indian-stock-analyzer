@@ -60,6 +60,80 @@ async def send_morning_note(text: str) -> None:
     await send_message(text)
 
 
+_FREE_TELEGRAM_LIMIT = 5
+
+
+async def send_verdicts_tiered(verdicts: list[tuple[str, str]]) -> None:
+    """Send the evening verdict batch with tier-based filtering.
+
+    Each element of `verdicts` is (symbol, formatted_telegram_text).
+    Pro subscribers (linked account + active subscription) receive all verdicts.
+    Free subscribers receive the first FREE_LIMIT verdicts plus a paywall note.
+    """
+    from analyzer.users.store import get_pro_chat_ids
+
+    subscribers = sub_store.get_confirmed_chat_ids()
+    if not subscribers:
+        return
+
+    pro_ids = get_pro_chat_ids()
+    bot = _get_bot()
+
+    app_url = os.getenv("APP_URL", "https://yourapp.com")
+    paywall_text = (
+        f"🔒 <b>+{len(verdicts) - _FREE_TELEGRAM_LIMIT} more stocks for Pro subscribers</b>\n\n"
+        f"Upgrade at <a href='{app_url}/subscribe'>{app_url}/subscribe</a> "
+        f"to receive all {len(verdicts)} verdicts and morning follow-ups."
+    )
+
+    for chat_id in subscribers:
+        is_pro = chat_id in pro_ids
+        texts_to_send = (
+            [t for _, t in verdicts] if is_pro else [t for _, t in verdicts[:_FREE_TELEGRAM_LIMIT]]
+        )
+
+        if not is_pro and len(verdicts) > _FREE_TELEGRAM_LIMIT:
+            texts_to_send.append(paywall_text)
+
+        for text in texts_to_send:
+            try:
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    parse_mode="HTML" if text == paywall_text else ParseMode.MARKDOWN,
+                )
+                sub_store.record_delivery_success(chat_id)
+                log.info("telegram_sent", chat_id=chat_id)
+            except Exception as e:
+                log.error("telegram_send_failed", chat_id=chat_id, error=str(e))
+                sub_store.record_delivery_failure(chat_id)
+
+
+async def send_morning_notes_pro(notes: list[str]) -> None:
+    """Send morning notes only to Pro Telegram subscribers (linked + active subscription)."""
+    from analyzer.users.store import get_pro_chat_ids
+
+    subscribers = sub_store.get_confirmed_chat_ids()
+    if not subscribers:
+        return
+
+    pro_ids = get_pro_chat_ids()
+    pro_subscribers = [c for c in subscribers if c in pro_ids]
+    if not pro_subscribers:
+        return
+
+    bot = _get_bot()
+    for text in notes:
+        for chat_id in pro_subscribers:
+            try:
+                await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.MARKDOWN)
+                sub_store.record_delivery_success(chat_id)
+                log.info("telegram_morning_sent", chat_id=chat_id)
+            except Exception as e:
+                log.error("telegram_morning_send_failed", chat_id=chat_id, error=str(e))
+                sub_store.record_delivery_failure(chat_id)
+
+
 async def send_failure_alert(error: str) -> None:
     await send_message(
         f"⚠️ *Pipeline failure*\n```\n{error[:500]}\n```",
@@ -245,11 +319,73 @@ async def handle_update(update: dict[str, Any]) -> None:
         else:
             await _reply(chat_id, "You weren't subscribed. Send /subscribe to sign up.")
 
+    elif command == "/link":
+        if not args:
+            await _reply(
+                chat_id,
+                "Usage: /link &lt;6-digit code&gt;\n\nGet your code at Account settings on the website.",
+            )
+            return
+
+        from analyzer.users.linking import consume_link_code
+        from analyzer.users.store import link_telegram
+
+        user_id = consume_link_code(args[0])
+        if not user_id:
+            await _reply(
+                chat_id,
+                "❌ Invalid or expired code.\n\n"
+                "Go to Account settings on the website to generate a new code.",
+            )
+            log.info("telegram_link_failed_bad_code", chat_id=chat_id)
+            return
+
+        link_telegram(user_id, chat_id, username)
+        app_url = os.getenv("APP_URL", "https://yourapp.com")
+        await _reply(
+            chat_id,
+            f"✅ <b>Telegram account linked!</b>\n\n"
+            f"Pro subscribers will now receive all stock verdicts and morning follow-ups.\n\n"
+            f"Not a Pro subscriber yet? Upgrade at <a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
+        )
+        log.info("telegram_linked_via_code", chat_id=chat_id, user_id=user_id)
+
+    elif command == "/unlink":
+        from analyzer.users.store import get_user_by_chat_id, unlink_telegram
+
+        user = get_user_by_chat_id(chat_id)
+        if not user:
+            await _reply(chat_id, "This Telegram account is not linked to any web account.")
+            return
+
+        unlink_telegram(user["user_id"])
+        await _reply(
+            chat_id,
+            "✅ Account unlinked. You'll continue receiving free-tier verdicts (5 stocks/day).\n\n"
+            "Use /link &lt;code&gt; to re-link at any time.",
+        )
+        log.info("telegram_unlinked_via_command", chat_id=chat_id)
+
+    elif command == "/upgrade":
+        app_url = os.getenv("APP_URL", "https://yourapp.com")
+        await _reply(
+            chat_id,
+            f"⭐ <b>Upgrade to Pro</b>\n\n"
+            f"Pro subscribers receive:\n"
+            f"• All stock verdicts (not just 5)\n"
+            f"• Morning follow-up notes\n"
+            f"• Full web access to all picks\n\n"
+            f"Subscribe at: <a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
+        )
+
     else:
         await _reply(
             chat_id,
             "Available commands:\n"
             "/subscribe — subscribe to daily stock verdicts\n"
             "/verify &lt;code&gt; — verify your subscription\n"
-            "/unsubscribe — stop receiving messages",
+            "/unsubscribe — stop receiving messages\n"
+            "/link &lt;code&gt; — link your web account for Pro delivery\n"
+            "/unlink — unlink your web account\n"
+            "/upgrade — learn about Pro subscription",
         )

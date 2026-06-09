@@ -24,6 +24,12 @@ def load_secrets_from_ssm() -> None:
     if os.getenv("ENVIRONMENT") != "production":
         return
 
+    # Skip the SSM fetch (and the KMS decrypt calls it triggers) when secrets
+    # are already set directly in the Lambda environment configuration.
+    if os.getenv("OPENAI_API_KEY"):
+        log.info("ssm_secrets_skipped", reason="already_in_env")
+        return
+
     try:
         import boto3  # provided by Lambda runtime; not required locally
 

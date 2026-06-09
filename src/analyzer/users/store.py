@@ -116,3 +116,71 @@ def delete_user(user_id: str) -> None:
     except Exception as exc:
         log.error("dynamo_delete_user_failed", user_id=user_id, error=str(exc))
         raise
+
+
+def link_telegram(user_id: str, chat_id: str, chat_username: str = "") -> None:
+    """Store the Telegram chat_id on the user record (called after /link <code>)."""
+    try:
+        _table().update_item(
+            Key={"user_id": user_id},
+            UpdateExpression="SET chat_id = :c, chat_username = :u, updated_at = :t",
+            ExpressionAttributeValues={":c": chat_id, ":u": chat_username, ":t": _now()},
+        )
+        log.info("telegram_linked", user_id=user_id, chat_id=chat_id)
+    except Exception as exc:
+        log.error("telegram_link_failed", user_id=user_id, error=str(exc))
+        raise
+
+
+def unlink_telegram(user_id: str) -> None:
+    """Remove the Telegram link from the user record."""
+    try:
+        _table().update_item(
+            Key={"user_id": user_id},
+            UpdateExpression="REMOVE chat_id, chat_username SET updated_at = :t",
+            ExpressionAttributeValues={":t": _now()},
+        )
+        log.info("telegram_unlinked", user_id=user_id)
+    except Exception as exc:
+        log.error("telegram_unlink_failed", user_id=user_id, error=str(exc))
+        raise
+
+
+def get_user_by_chat_id(chat_id: str) -> dict[str, Any] | None:
+    """Look up a user by Telegram chat_id via the GSI on that attribute."""
+    import boto3
+    from boto3.dynamodb.conditions import Key as DKey
+
+    try:
+        table = boto3.resource("dynamodb", region_name=REGION).Table(TABLE_NAME)
+        resp = table.query(
+            IndexName="chat_id-index",
+            KeyConditionExpression=DKey("chat_id").eq(chat_id),
+            Limit=1,
+        )
+        items = resp.get("Items", [])
+        return items[0] if items else None
+    except Exception as exc:
+        log.warning("dynamo_get_user_by_chat_id_failed", chat_id=chat_id, error=str(exc))
+        return None
+
+
+def get_pro_chat_ids() -> set[str]:
+    """Return chat_ids of users with an active subscription and a linked Telegram account.
+
+    Used by the pipeline to decide which Telegram subscribers receive the full
+    verdict set vs the free-tier truncated set.
+    """
+    import boto3
+    from boto3.dynamodb.conditions import Attr
+
+    try:
+        table = boto3.resource("dynamodb", region_name=REGION).Table(TABLE_NAME)
+        resp = table.scan(
+            FilterExpression=Attr("chat_id").exists() & Attr("subscription_status").eq("active"),
+            ProjectionExpression="chat_id",
+        )
+        return {item["chat_id"] for item in resp.get("Items", [])}
+    except Exception as exc:
+        log.warning("dynamo_get_pro_chat_ids_failed", error=str(exc))
+        return set()

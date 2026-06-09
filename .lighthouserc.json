@@ -25,7 +25,8 @@
         "unused-javascript":         ["warn", {"maxLength": 5}],
         "legacy-javascript-insight": ["warn", {"minScore": 0}],
         "aria-allowed-role":         ["error", {"minScore": 1}],
-        "uses-rel-preconnect":       ["warn",  {"maxLength": 2}]
+        "uses-rel-preconnect":       ["warn",  {"maxLength": 2}],
+        "forced-reflow-insight":     ["off"]
       }
     },
     "upload": {

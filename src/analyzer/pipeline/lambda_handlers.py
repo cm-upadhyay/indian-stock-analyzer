@@ -66,6 +66,7 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
     today = date.today()
     results = []
     email_stocks: list[dict[str, Any]] = []
+    telegram_verdicts: list[tuple[str, str]] = []  # (symbol, formatted_text) for tiered send
 
     for symbol in symbols:
         # Idempotency: if Lambda fires twice (AWS at-least-once), skip already-processed symbols
@@ -86,15 +87,16 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
                 store.save(today, symbol, state.verdict)
                 results.append({"symbol": symbol, "signal": state.verdict.signal})
 
-                asyncio.run(
-                    tg.send_verdict(
+                telegram_verdicts.append(
+                    (
+                        symbol,
                         format_telegram(
                             symbol=state.stock.symbol,
                             company_name=state.stock.company_name,
                             current_price=state.stock.current_price,
                             verdict=state.verdict,
                             scoring=state.scoring,
-                        )
+                        ),
                     )
                 )
 
@@ -110,6 +112,9 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
                 )
         except Exception as e:
             log.error("stock_failed", symbol=symbol, error=str(e))
+
+    if telegram_verdicts:
+        asyncio.run(tg.send_verdicts_tiered(telegram_verdicts))
 
     if email_stocks:
         buy = sum(1 for s in email_stocks if s["verdict"].signal == "BUY")
@@ -149,6 +154,7 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
 
     log.info("morning_lambda_start", symbols_count=len(pairs))
     notes = []
+    telegram_morning: list[str] = []
 
     kill_switch = get_flag("kill_switch_publish_verdicts")
     if kill_switch:
@@ -159,10 +165,13 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
         try:
             state = run_8am(symbol=symbol, company_name=symbol.replace(".NS", ""))
             if state.morning_note:
-                asyncio.run(tg.send_morning_note(format_telegram_morning(state.morning_note)))
+                telegram_morning.append(format_telegram_morning(state.morning_note))
                 notes.append(state.morning_note)
         except Exception as e:
             log.error("morning_failed", symbol=symbol, error=str(e))
+
+    if telegram_morning:
+        asyncio.run(tg.send_morning_notes_pro(telegram_morning))
 
     if notes:
         intact = sum(1 for n in notes if n.status == "INTACT")

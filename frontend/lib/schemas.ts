@@ -19,6 +19,7 @@ export const VerdictSchema = z.object({
 export const LatestResponseSchema = z.object({
   date: z.string(),
   count: z.number().int(),
+  total_count: z.number().int().default(0),
   analyses: z.array(VerdictSchema),
 })
 
@@ -72,6 +73,13 @@ export const MeSchema = z.object({
   email: z.string(),
   name: z.string(),
   subscription_status: z.enum(["free", "active", "lapsed", "cancelled"]),
+  telegram_linked: z.boolean().default(false),
+  chat_username: z.string().default(""),
+})
+
+export const LinkCodeResponseSchema = z.object({
+  code: z.string(),
+  expires_in_seconds: z.number().int(),
 })
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -83,3 +91,4 @@ export type MorningResponse = z.infer<typeof MorningResponseSchema>
 export type AccuracyResponse = z.infer<typeof AccuracyResponseSchema>
 export type StockResponse = z.infer<typeof StockResponseSchema>
 export type Me = z.infer<typeof MeSchema>
+export type LinkCodeResponse = z.infer<typeof LinkCodeResponseSchema>

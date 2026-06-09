@@ -27,10 +27,42 @@ module "s3_data" {
 
 # ── DynamoDB tables ───────────────────────────────────────────────────────────
 
-module "dynamo_users" {
+# Inlined (not using the module) so we can add the chat_id-index GSI for
+# Telegram account linking without modifying the shared module.
+resource "aws_dynamodb_table" "users" {
+  name         = "analyzer-users-prod"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "chat_id"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "chat_id-index"
+    hash_key        = "chat_id"
+    projection_type = "ALL"
+  }
+
+  point_in_time_recovery {
+    enabled = true
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+module "dynamo_link_codes" {
   source   = "../../modules/dynamodb_table"
-  name     = "analyzer-users-prod"
-  hash_key = "user_id"
+  name     = "analyzer-link-codes-prod"
+  hash_key = "code"
 }
 
 module "dynamo_subscribers" {
@@ -374,8 +406,10 @@ locals {
         ]
         Resource = [
           "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-users-prod",
+          "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-users-prod/index/*",
           "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-subscribers-prod",
           "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-hitl-checkpoints-prod",
+          "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-link-codes-prod",
         ]
       },
     ]
@@ -619,6 +653,7 @@ resource "aws_cloudwatch_metric_alarm" "dynamodb_throttles" {
     users       = "analyzer-users-prod"
     subscribers = "analyzer-subscribers-prod"
     hitl        = "analyzer-hitl-checkpoints-prod"
+    link_codes  = "analyzer-link-codes-prod"
   }
   alarm_name          = "dynamodb-${each.key}-throttles"
   alarm_description   = "DynamoDB ${each.value} throttled requests ≥ 5 in 5 min"
