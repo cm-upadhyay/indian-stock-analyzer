@@ -1,0 +1,8 @@
+[allowlist]
+description = "False positives in lock files"
+# SHA256 hashes in uv.lock/package-lock.json can match secret patterns.
+# These are verified checksums from PyPI/npm registries, not real secrets.
+paths = [
+  "uv.lock",
+  "frontend/package-lock.json",
+]
