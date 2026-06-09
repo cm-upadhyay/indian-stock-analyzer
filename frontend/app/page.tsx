@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import Link from "next/link"
 import { signIn, useSession } from "next-auth/react"
-import { fetchLatest, fetchMorning } from "@/lib/api"
+import { fetchLatest, fetchMorning, PaywallError } from "@/lib/api"
 import VerdictCard from "@/components/verdict-card"
 import MorningCard from "@/components/morning-card"
 import SignalBadge from "@/components/signal-badge"
@@ -91,12 +91,30 @@ function VerdictGroup({
 
 function MorningSection({ eveningDate }: { eveningDate: string }) {
   const { status } = useSession()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ["morning"],
     queryFn: fetchMorning,
     enabled: status === "authenticated",
     staleTime: 5 * 60 * 1000,
+    retry: false,
   })
+
+  if (error instanceof PaywallError) {
+    return (
+      <section aria-labelledby="morning-paywall" className="mt-12 rounded-xl border border-gray-200 bg-gray-50 px-8 py-6 text-center">
+        <h2 id="morning-paywall" className="text-base font-semibold text-gray-800">
+          Morning Follow-up
+        </h2>
+        <p className="mt-1 text-sm text-gray-500">How yesterday&apos;s picks open — available for Pro subscribers</p>
+        <Link
+          href="/subscribe"
+          className="mt-4 inline-block rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700"
+        >
+          Upgrade to Pro
+        </Link>
+      </section>
+    )
+  }
 
   // Morning notes are "how the previous evening's picks opened" — only show
   // if the morning date is strictly after the evening date we're displaying.
@@ -202,6 +220,25 @@ export default function Home() {
       <VerdictGroup label="Buy" verdicts={buy} signal="BUY" />
       <VerdictGroup label="Hold" verdicts={hold} signal="HOLD" />
       <VerdictGroup label="Sell" verdicts={sell} signal="SELL" />
+
+      {/* Paywall banner — shown when free user is seeing a truncated list */}
+      {data.total_count > data.count && (
+        <div className="mt-10 rounded-xl border border-gray-200 bg-gray-50 px-8 py-7 text-center">
+          <p className="text-lg font-semibold text-gray-800">
+            🔒 {data.total_count - data.count} more stocks hidden
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            Upgrade to Pro to see all {data.total_count} picks, get morning follow-ups,
+            and Telegram delivery
+          </p>
+          <Link
+            href="/subscribe"
+            className="mt-4 inline-block rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            Upgrade to Pro
+          </Link>
+        </div>
+      )}
     </div>
   )
 }

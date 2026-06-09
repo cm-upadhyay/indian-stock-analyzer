@@ -205,6 +205,7 @@ class VerdictOut(BaseModel):
 class LatestResponse(BaseModel):
     date: str
     count: int
+    total_count: int  # count before tier gating; equals count for Pro users
     analyses: list[VerdictOut]
 
 
@@ -255,6 +256,13 @@ class MeResponse(BaseModel):
     email: str
     name: str
     subscription_status: str  # free | active | lapsed | cancelled
+    telegram_linked: bool
+    chat_username: str
+
+
+class LinkCodeResponse(BaseModel):
+    code: str
+    expires_in_seconds: int
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -318,9 +326,9 @@ def health(request: Request) -> HealthResponse:
 def latest(
     request: Request,
     run_date: str | None = None,
-    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> LatestResponse:
-    """All verdicts for a given date. Defaults to today, falls back to most recent date with data."""
+    """All verdicts for a given date. Free users get max 10; Pro users get all."""
     target = _parse_date(run_date)
     pairs = _store.load_all(target)
     if not pairs and run_date is None:
@@ -328,10 +336,28 @@ def latest(
         if most_recent and most_recent != target:
             target = most_recent
             pairs = _store.load_all(target)
+
+    analyses = [_to_verdict_out(sym, v) for sym, v in pairs]
+    total_count = len(analyses)
+
+    # Tier gating: Free users see at most 10 stocks
+    if user and os.getenv("NEXTAUTH_SECRET"):
+        user_id = user.get("sub", "")
+        if user_id:
+            try:
+                from analyzer.users.store import get_user
+
+                record = get_user(user_id) or {}
+                if record.get("subscription_status", "free") != "active":
+                    analyses = analyses[:10]
+            except Exception:
+                pass  # degrade gracefully if DynamoDB unavailable
+
     return LatestResponse(
         date=str(target),
-        count=len(pairs),
-        analyses=[_to_verdict_out(sym, v) for sym, v in pairs],
+        count=len(analyses),
+        total_count=total_count,
+        analyses=analyses,
     )
 
 
@@ -359,9 +385,27 @@ def get_stock(
 def morning(
     request: Request,
     run_date: str | None = None,
-    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
 ) -> MorningResponse:
-    """All morning notes for a given date. Added in Phase 3A (Task 3.18 prep)."""
+    """Morning follow-up notes — Pro subscribers only."""
+    # Pro gate: reject free users when auth is configured
+    if user and os.getenv("NEXTAUTH_SECRET"):
+        user_id = user.get("sub", "")
+        if user_id:
+            try:
+                from analyzer.users.store import get_user
+
+                record = get_user(user_id) or {}
+                if record.get("subscription_status", "free") != "active":
+                    raise HTTPException(
+                        status_code=402,
+                        detail="Morning notes require a Pro subscription",
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                pass  # degrade gracefully if DynamoDB unavailable
+
     target = _parse_date(run_date)
     records = _morning_store.load_all(str(target))
     return MorningResponse(
@@ -415,7 +459,7 @@ def accuracy(
 @v1.get("/me", response_model=MeResponse)
 @limiter.limit("60/hour")
 def me(request: Request, user: dict[str, Any] = Security(_require_user_jwt)) -> MeResponse:  # noqa: B008
-    """Current user's profile and subscription status (Task 3.21)."""
+    """Current user's profile, subscription status, and Telegram link state."""
     user_id = user.get("sub", "")
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token — no sub claim")
@@ -428,7 +472,43 @@ def me(request: Request, user: dict[str, Any] = Security(_require_user_jwt)) -> 
         email=user.get("email", ""),
         name=user.get("name", ""),
         subscription_status=record.get("subscription_status", "free"),
+        telegram_linked=bool(record.get("chat_id")),
+        chat_username=record.get("chat_username", ""),
     )
+
+
+@v1.post("/link-code", response_model=LinkCodeResponse)
+@limiter.limit("10/minute")
+def create_link_code(
+    request: Request,
+    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> LinkCodeResponse:
+    """Generate a 6-digit Telegram link code for the authenticated user (expires in 15 min)."""
+    user_id = user.get("sub", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token — no sub claim")
+
+    from analyzer.users.linking import generate_link_code
+
+    code = generate_link_code(user_id)
+    return LinkCodeResponse(code=code, expires_in_seconds=900)
+
+
+@v1.delete("/unlink-telegram")
+@limiter.limit("10/minute")
+def unlink_telegram_endpoint(
+    request: Request,
+    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> dict[str, str]:
+    """Remove the Telegram link from the authenticated user's account."""
+    user_id = user.get("sub", "")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token — no sub claim")
+
+    from analyzer.users.store import unlink_telegram
+
+    unlink_telegram(user_id)
+    return {"status": "ok"}
 
 
 @v1.get("/stream/{symbol}")

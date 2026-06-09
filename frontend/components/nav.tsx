@@ -8,6 +8,7 @@ import { fetchMe } from "@/lib/api"
 const links = [
   { href: "/", label: "Evening Analysis" },
   { href: "/accuracy", label: "Accuracy" },
+  { href: "/account", label: "Account" },
 ]
 
 export default function Nav() {

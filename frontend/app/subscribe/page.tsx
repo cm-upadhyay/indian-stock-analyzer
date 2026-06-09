@@ -15,17 +15,17 @@ declare global {
 }
 
 const FREE_FEATURES = [
-  "All daily screener picks (30 stocks)",
+  "Up to 10 daily picks on the web",
   "Full BUY / HOLD / SELL verdicts with reasoning",
-  "Morning follow-up section",
+  "5 stocks/day via Telegram (no account required)",
   "Accuracy history page",
 ]
 
 const PRO_FEATURES = [
-  "Everything in Free",
-  "Telegram delivery at 4:30 PM IST every weekday",
+  "All 30+ daily picks on the web",
+  "Morning follow-up notes every weekday",
+  "Telegram — all verdicts + morning notes",
   "Live SSE streaming during analysis runs",
-  "Higher API rate limit",
 ]
 
 export default function SubscribePage() {

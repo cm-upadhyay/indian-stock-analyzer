@@ -14,6 +14,11 @@ CVE-2026-4046
 # urllib3 2.6.3 CVEs — upgrade to 2.7.0 blocked by same llm-guard pin as litellm above.
 CVE-2026-44431
 CVE-2026-44432
+# libsolv CVEs in Amazon Linux 2023 base image — OS package managed by AWS, not upgradeable by us.
+CVE-2026-48863
+CVE-2026-48864
+CVE-2026-9149
+CVE-2026-9150
 # Go stdlib CVEs in aws-lambda-rie binary (AWS-controlled, not present in deployed Lambda image).
 CVE-2026-33811
 CVE-2026-33814
