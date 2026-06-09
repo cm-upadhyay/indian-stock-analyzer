@@ -205,7 +205,6 @@ class VerdictOut(BaseModel):
 class LatestResponse(BaseModel):
     date: str
     count: int
-    total_count: int  # count before tier gating; equals count for Pro users
     analyses: list[VerdictOut]
 
 
@@ -321,14 +320,7 @@ def health(request: Request) -> HealthResponse:
     return HealthResponse(status=overall, checks=checks)
 
 
-@v1.get("/latest", response_model=LatestResponse)
-@limiter.limit("60/hour")
-def latest(
-    request: Request,
-    run_date: str | None = None,
-    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
-) -> LatestResponse:
-    """All verdicts for a given date. Free users get max 10; Pro users get all."""
+def _load_analyses(run_date: str | None) -> tuple[date, list[VerdictOut]]:
     target = _parse_date(run_date)
     pairs = _store.load_all(target)
     if not pairs and run_date is None:
@@ -336,12 +328,30 @@ def latest(
         if most_recent and most_recent != target:
             target = most_recent
             pairs = _store.load_all(target)
+    return target, [_to_verdict_out(sym, v) for sym, v in pairs]
 
-    analyses = [_to_verdict_out(sym, v) for sym, v in pairs]
-    total_count = len(analyses)
 
-    # Tier gating: Free users see at most 10 stocks
-    if user and os.getenv("NEXTAUTH_SECRET"):
+@v1.get("/latest", response_model=LatestResponse)
+@limiter.limit("120/hour")
+def latest(
+    request: Request,
+    run_date: str | None = None,
+) -> LatestResponse:
+    """Free-tier: top 10 picks, no auth required, CDN-cacheable."""
+    target, analyses = _load_analyses(run_date)
+    sliced = analyses[:10]
+    return LatestResponse(date=str(target), count=len(sliced), analyses=sliced)
+
+
+@v1.get("/pro/latest", response_model=LatestResponse)
+@limiter.limit("60/hour")
+def pro_latest(
+    request: Request,
+    run_date: str | None = None,
+    user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
+) -> LatestResponse:
+    """Pro-tier: all picks, requires active subscription, bypasses CDN cache."""
+    if os.getenv("NEXTAUTH_SECRET"):
         user_id = user.get("sub", "")
         if user_id:
             try:
@@ -349,16 +359,17 @@ def latest(
 
                 record = get_user(user_id) or {}
                 if record.get("subscription_status", "free") != "active":
-                    analyses = analyses[:10]
+                    raise HTTPException(
+                        status_code=402,
+                        detail="Active subscription required",
+                    )
+            except HTTPException:
+                raise
             except Exception:
                 pass  # degrade gracefully if DynamoDB unavailable
 
-    return LatestResponse(
-        date=str(target),
-        count=len(analyses),
-        total_count=total_count,
-        analyses=analyses,
-    )
+    target, analyses = _load_analyses(run_date)
+    return LatestResponse(date=str(target), count=len(analyses), analyses=analyses)
 
 
 @v1.get("/stock/{symbol}", response_model=StockResponse)
