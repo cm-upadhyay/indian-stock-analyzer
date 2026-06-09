@@ -166,11 +166,12 @@ function MorningSection({ eveningDate }: { eveningDate: string }) {
 
 export default function Home() {
   const { status } = useSession()
-  const { data: me } = useQuery({
+  const { data: me, isError: isMeError } = useQuery({
     queryKey: ["me"],
     queryFn: fetchMe,
     enabled: status === "authenticated",
     staleTime: 5 * 60 * 1000,
+    retry: false,
   })
   const isPro = me?.subscription_status === "active"
   const { data, isLoading, isError } = useQuery({
@@ -180,9 +181,9 @@ export default function Home() {
     staleTime: 5 * 60 * 1000,
   })
 
-  if (status === "loading" || (status === "authenticated" && isLoading)) return <LoadingState />
+  if (status === "loading" || (status === "authenticated" && !isMeError && isLoading)) return <LoadingState />
   if (status === "unauthenticated") return <ErrorState isAuth={true} />
-  if (isError) return <ErrorState />
+  if (isMeError || isError) return <ErrorState />
 
   const today = new Date().toISOString().slice(0, 10)
   if (!data || data.count === 0) return <EmptyState date={data?.date ?? today} />
