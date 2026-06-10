@@ -79,7 +79,7 @@ async def send_verdicts_tiered(verdicts: list[tuple[str, str]]) -> None:
     pro_ids = get_pro_chat_ids()
     bot = _get_bot()
 
-    app_url = os.getenv("APP_URL", "https://yourapp.com")
+    app_url = os.getenv("APP_URL", "")
     paywall_text = (
         f"🔒 <b>+{len(verdicts) - _FREE_TELEGRAM_LIMIT} more stocks for Pro subscribers</b>\n\n"
         f"Upgrade at <a href='{app_url}/subscribe'>{app_url}/subscribe</a> "
@@ -272,7 +272,7 @@ async def handle_update(update: dict[str, Any]) -> None:
     args = text.split()[1:]
 
     if command in ("/start", "/subscribe"):
-        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+        app_url = os.getenv("APP_URL", "")
         code = sub_store.subscribe(chat_id, username=username)
         await _reply(
             chat_id,
@@ -293,7 +293,7 @@ async def handle_update(update: dict[str, Any]) -> None:
             await _reply(chat_id, "Usage: /verify &lt;6-digit code&gt;")
             return
 
-        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+        app_url = os.getenv("APP_URL", "")
         success, reason = sub_store.verify(chat_id, args[0])
         if success:
             await _reply(
@@ -353,7 +353,7 @@ async def handle_update(update: dict[str, Any]) -> None:
 
         link_telegram(user_id, chat_id, username)
         newly_subscribed = sub_store.ensure_confirmed(chat_id, username)
-        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+        app_url = os.getenv("APP_URL", "")
 
         user_record = get_user(user_id) or {}
         is_pro = user_record.get("subscription_status") == "active"
@@ -402,7 +402,7 @@ async def handle_update(update: dict[str, Any]) -> None:
         log.info("telegram_unlinked_via_command", chat_id=chat_id)
 
     elif command == "/upgrade":
-        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+        app_url = os.getenv("APP_URL", "")
         await _reply(
             chat_id,
             f"⭐ <b>Upgrade to Pro</b>\n\n"

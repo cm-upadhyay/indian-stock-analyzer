@@ -73,7 +73,9 @@ def send_verdict_email_pro(
         log.info("email_pro_no_recipients")
         return
 
-    app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+    app_url = os.getenv("APP_URL", "")
+    if not app_url:
+        log.warning("app_url_not_configured_unsubscribe_links_missing")
     sent = 0
     for user in pro_users:
         unsubscribe_url = f"{app_url}/api/unsubscribe-email?token={user['unsubscribe_token']}"

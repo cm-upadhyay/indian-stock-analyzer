@@ -18,6 +18,16 @@ module "ecr_pipeline" {
   name   = "indian-stock-analyzer-pipeline"
 }
 
+# ── SSM config parameters ─────────────────────────────────────────────────────
+
+# Pipeline and morning Lambdas load this from SSM at cold-start.
+# The API Lambda has APP_URL set directly in its env vars.
+resource "aws_ssm_parameter" "app_url" {
+  name  = "/indian-stock-analyzer/prod/APP_URL"
+  type  = "String"
+  value = var.app_url
+}
+
 # ── S3 data bucket ────────────────────────────────────────────────────────────
 
 module "s3_data" {
