@@ -412,6 +412,12 @@ locals {
           "arn:aws:dynamodb:${local.region}:${local.account_id}:table/analyzer-link-codes-prod",
         ]
       },
+      {
+        Sid    = "SESSendEmail"
+        Effect = "Allow"
+        Action = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = "*"
+      },
     ]
   })
 

@@ -141,6 +141,7 @@ def format_telegram_morning(note: MorningNote) -> str:
 def format_email_html(
     stocks: list[dict[str, Any]],
     today: date,
+    unsubscribe_url: str = "",
 ) -> str:
     buy = [s for s in stocks if s["verdict"].signal == "BUY"]
     hold = [s for s in stocks if s["verdict"].signal == "HOLD"]
@@ -293,6 +294,7 @@ def format_email_html(
 
   <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:20px;">
     Indian Stock Analyzer · Not financial advice · For informational purposes only
+    {('<br><a href="' + unsubscribe_url + '" style="color:#9ca3af;">Unsubscribe from Pro emails</a>') if unsubscribe_url else ""}
   </p>
 </div>
 </body></html>"""
@@ -301,7 +303,9 @@ def format_email_html(
 # ── HTML email — morning follow-up ────────────────────────────────────────────
 
 
-def format_morning_email_html(notes: list[MorningNote], today: date) -> str:
+def format_morning_email_html(
+    notes: list[MorningNote], today: date, unsubscribe_url: str = ""
+) -> str:
     date_str = today.strftime("%d %b %Y")
     intact = [n for n in notes if n.status == "INTACT"]
     strengthened = [n for n in notes if n.status == "STRENGTHENED"]
@@ -367,6 +371,7 @@ def format_morning_email_html(notes: list[MorningNote], today: date) -> str:
 
   <p style="text-align:center;font-size:11px;color:#9ca3af;margin-top:20px;">
     Indian Stock Analyzer · Not financial advice · For informational purposes only
+    {('<br><a href="' + unsubscribe_url + '" style="color:#9ca3af;">Unsubscribe from Pro emails</a>') if unsubscribe_url else ""}
   </p>
 </div>
 </body></html>"""
