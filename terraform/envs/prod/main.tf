@@ -423,9 +423,9 @@ locals {
         ]
       },
       {
-        Sid    = "SESSendEmail"
-        Effect = "Allow"
-        Action = ["ses:SendEmail", "ses:SendRawEmail"]
+        Sid      = "SESSendEmail"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
         Resource = "*"
       },
     ]
