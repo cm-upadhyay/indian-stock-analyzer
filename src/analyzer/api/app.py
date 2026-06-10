@@ -257,6 +257,7 @@ class MeResponse(BaseModel):
     subscription_status: str  # free | active | lapsed | cancelled
     telegram_linked: bool
     chat_username: str
+    email_opt_out: bool = False
 
 
 class LinkCodeResponse(BaseModel):
@@ -485,6 +486,7 @@ def me(request: Request, user: dict[str, Any] = Security(_require_user_jwt)) -> 
         subscription_status=record.get("subscription_status", "free"),
         telegram_linked=bool(record.get("chat_id")),
         chat_username=record.get("chat_username", ""),
+        email_opt_out=bool(record.get("email_opt_out", False)),
     )
 
 
@@ -520,6 +522,41 @@ def unlink_telegram_endpoint(
 
     unlink_telegram(user_id)
     return {"status": "ok"}
+
+
+@v1.get("/unsubscribe-email")
+@limiter.limit("30/hour")
+def unsubscribe_email(request: Request, token: str) -> dict[str, str]:
+    """Token-based email unsubscribe — no login required.
+
+    Token format: <user_id>.<hmac>. Validates HMAC with NEXTAUTH_SECRET.
+    Idempotent — safe to call multiple times.
+    """
+    import base64
+    import hashlib
+    import hmac as hmac_lib
+
+    secret = os.getenv("NEXTAUTH_SECRET", "").encode()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Unsubscribe not configured")
+
+    try:
+        user_id, received_hmac = token.rsplit(".", 1)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid token format") from None
+
+    expected = base64.urlsafe_b64encode(
+        hmac_lib.new(secret, user_id.encode(), hashlib.sha256).digest()[:12]
+    ).decode()
+
+    if not hmac_lib.compare_digest(expected, received_hmac):
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+
+    from analyzer.users.store import set_email_opt_out
+
+    set_email_opt_out(user_id, opt_out=True)
+    log.info("email_unsubscribed_via_token", user_id=user_id)
+    return {"status": "unsubscribed"}
 
 
 @v1.get("/stream/{symbol}")

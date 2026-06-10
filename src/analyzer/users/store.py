@@ -166,11 +166,7 @@ def get_user_by_chat_id(chat_id: str) -> dict[str, Any] | None:
 
 
 def get_pro_chat_ids() -> set[str]:
-    """Return chat_ids of users with an active subscription and a linked Telegram account.
-
-    Used by the pipeline to decide which Telegram subscribers receive the full
-    verdict set vs the free-tier truncated set.
-    """
+    """Return chat_ids of users with an active subscription and a linked Telegram account."""
     import boto3
     from boto3.dynamodb.conditions import Attr
 
@@ -184,3 +180,67 @@ def get_pro_chat_ids() -> set[str]:
     except Exception as exc:
         log.warning("dynamo_get_pro_chat_ids_failed", error=str(exc))
         return set()
+
+
+def get_pro_emails() -> list[dict[str, str]]:
+    """Return email + unsubscribe token for Pro users who haven't opted out of email.
+
+    Used by the pipeline to send the evening digest and morning notes to Pro users.
+    Each dict has: email, name, user_id, unsubscribe_token.
+    """
+    import base64
+    import hashlib
+    import hmac as hmac_lib
+
+    import boto3
+    from boto3.dynamodb.conditions import Attr
+
+    secret = os.getenv("NEXTAUTH_SECRET", "").encode()
+
+    try:
+        table = boto3.resource("dynamodb", region_name=REGION).Table(TABLE_NAME)
+        resp = table.scan(
+            FilterExpression=Attr("subscription_status").eq("active")
+            & Attr("email_opt_out").ne(True),
+            ProjectionExpression="user_id, email, #nm",
+            ExpressionAttributeNames={"#nm": "name"},
+        )
+        result = []
+        for item in resp.get("Items", []):
+            uid = item.get("user_id", "")
+            token = base64.urlsafe_b64encode(
+                hmac_lib.new(secret, uid.encode(), hashlib.sha256).digest()[:12]
+            ).decode()
+            result.append(
+                {
+                    "user_id": uid,
+                    "email": item.get("email", ""),
+                    "name": item.get("name", ""),
+                    "unsubscribe_token": f"{uid}.{token}",
+                }
+            )
+        return result
+    except Exception as exc:
+        log.warning("dynamo_get_pro_emails_failed", error=str(exc))
+        return []
+
+
+def set_email_opt_out(user_id: str, opt_out: bool) -> None:
+    """Set or clear the email_opt_out flag on a user record."""
+    try:
+        if opt_out:
+            _table().update_item(
+                Key={"user_id": user_id},
+                UpdateExpression="SET email_opt_out = :v, updated_at = :t",
+                ExpressionAttributeValues={":v": True, ":t": _now()},
+            )
+        else:
+            _table().update_item(
+                Key={"user_id": user_id},
+                UpdateExpression="REMOVE email_opt_out SET updated_at = :t",
+                ExpressionAttributeValues={":t": _now()},
+            )
+        log.info("email_opt_out_set", user_id=user_id, opt_out=opt_out)
+    except Exception as exc:
+        log.error("email_opt_out_failed", user_id=user_id, error=str(exc))
+        raise

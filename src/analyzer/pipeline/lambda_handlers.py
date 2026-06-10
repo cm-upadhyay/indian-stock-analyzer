@@ -39,7 +39,7 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
     from analyzer.flags import get_flag
     from analyzer.llm.formatter import format_email_html, format_telegram
     from analyzer.notify import telegram as tg
-    from analyzer.notify.email import send_verdict_email
+    from analyzer.notify.email import send_verdict_email, send_verdict_email_pro
     from analyzer.pipeline.graph_4pm import run_4pm
     from analyzer.screener import run_screener
     from analyzer.utils.storage import AnalysisStore
@@ -125,6 +125,9 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
             f"{buy} BUY · {hold} HOLD · {sell} SELL"
         )
         send_verdict_email(subject, format_email_html(email_stocks, today), html=True)
+        send_verdict_email_pro(
+            subject, lambda u: format_email_html(email_stocks, today, unsubscribe_url=u)
+        )
         log.info("pipeline_email_sent", count=len(email_stocks))
 
     log.info("pipeline_lambda_done", completed=len(results))
@@ -140,7 +143,7 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
     from analyzer.flags import get_flag
     from analyzer.llm.formatter import format_morning_email_html, format_telegram_morning
     from analyzer.notify import telegram as tg
-    from analyzer.notify.email import send_verdict_email
+    from analyzer.notify.email import send_verdict_email, send_verdict_email_pro
     from analyzer.pipeline.graph_8am import run_8am
     from analyzer.utils.storage import AnalysisStore
 
@@ -182,6 +185,9 @@ def morning_handler(event: dict, context: object) -> dict:  # type: ignore[type-
             f"How are yesterday's calls holding?"
         )
         send_verdict_email(subject, format_morning_email_html(notes, today), html=True)
+        send_verdict_email_pro(
+            subject, lambda u: format_morning_email_html(notes, today, unsubscribe_url=u)
+        )
         log.info("morning_email_sent", intact=intact, strengthened=strengthened, weakened=weakened)
 
     log.info("morning_lambda_done", completed=len(notes))
