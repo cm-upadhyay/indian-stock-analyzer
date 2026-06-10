@@ -272,13 +272,19 @@ async def handle_update(update: dict[str, Any]) -> None:
     args = text.split()[1:]
 
     if command in ("/start", "/subscribe"):
+        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
         code = sub_store.subscribe(chat_id, username=username)
         await _reply(
             chat_id,
-            f"Welcome to Indian Stock Analyzer!\n\n"
+            f"Welcome to Indian Stock Analyzer! 📊\n\n"
             f"Your verification code is: <b>{code}</b>\n\n"
-            f"Reply with /verify {code} to confirm your subscription.\n"
-            f"Code expires in 10 minutes.",
+            f"Reply /verify {code} to confirm.\n"
+            f"Code expires in 10 minutes.\n\n"
+            f"Free tier: 5 stock picks/day\n"
+            f"⭐ Pro: all picks + morning follow-ups → "
+            f"<a href='{app_url}/subscribe'>{app_url}/subscribe</a>\n\n"
+            f"<i>Have a web account? Use /link &lt;code&gt; from your Account page — "
+            f"subscribes and links in one step.</i>",
         )
         log.info("telegram_subscribe_initiated", chat_id=chat_id)
 
@@ -287,18 +293,21 @@ async def handle_update(update: dict[str, Any]) -> None:
             await _reply(chat_id, "Usage: /verify &lt;6-digit code&gt;")
             return
 
+        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
         success, reason = sub_store.verify(chat_id, args[0])
         if success:
             await _reply(
                 chat_id,
-                "✅ Subscription confirmed! You'll receive stock verdicts every evening "
-                "and morning follow-ups on weekdays.\n\nUse /unsubscribe to stop at any time.",
+                f"✅ <b>Subscribed!</b> You'll receive 5 stock picks every evening.\n\n"
+                f"⭐ Upgrade to Pro for all picks + morning follow-ups\n"
+                f"<a href='{app_url}/subscribe'>{app_url}/subscribe</a>\n\n"
+                f"Use /unsubscribe to stop at any time.",
             )
             log.info("telegram_verified", chat_id=chat_id)
         else:
             messages = {
                 "not_found": "No pending subscription. Send /subscribe to start.",
-                "already_confirmed": "You're already subscribed!",
+                "already_confirmed": "You're already subscribed! ✅",
                 "expired": "Code expired. Send /subscribe to get a new code.",
                 "wrong_code": "Wrong code. Please check and try again.",
                 "too_many_attempts": "Too many attempts. Send /subscribe to get a new code.",
@@ -340,15 +349,40 @@ async def handle_update(update: dict[str, Any]) -> None:
             log.info("telegram_link_failed_bad_code", chat_id=chat_id)
             return
 
+        from analyzer.users.store import get_user
+
         link_telegram(user_id, chat_id, username)
-        app_url = os.getenv("APP_URL", "https://yourapp.com")
-        await _reply(
-            chat_id,
-            f"✅ <b>Telegram account linked!</b>\n\n"
-            f"Pro subscribers will now receive all stock verdicts and morning follow-ups.\n\n"
-            f"Not a Pro subscriber yet? Upgrade at <a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
+        newly_subscribed = sub_store.ensure_confirmed(chat_id, username)
+        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
+
+        user_record = get_user(user_id) or {}
+        is_pro = user_record.get("subscription_status") == "active"
+
+        if is_pro:
+            verb = "Linked and subscribed!" if newly_subscribed else "Web account linked!"
+            await _reply(
+                chat_id,
+                f"✅ <b>{verb}</b>\n\n"
+                f"You're on Pro — you'll receive all stock picks + morning follow-ups every day 🎉",
+            )
+        else:
+            verb = "Linked and subscribed!" if newly_subscribed else "Web account linked!"
+            await _reply(
+                chat_id,
+                f"✅ <b>{verb}</b>\n\n"
+                f"You're on the free tier — you'll receive 5 picks/day on Telegram.\n\n"
+                f"⭐ Upgrade to Pro to unlock:\n"
+                f"• All picks (not just 5)\n"
+                f"• Morning follow-up notes\n"
+                f"<a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
+            )
+        log.info(
+            "telegram_linked_via_code",
+            chat_id=chat_id,
+            user_id=user_id,
+            is_pro=is_pro,
+            newly_subscribed=newly_subscribed,
         )
-        log.info("telegram_linked_via_code", chat_id=chat_id, user_id=user_id)
 
     elif command == "/unlink":
         from analyzer.users.store import get_user_by_chat_id, unlink_telegram
@@ -361,31 +395,34 @@ async def handle_update(update: dict[str, Any]) -> None:
         unlink_telegram(user["user_id"])
         await _reply(
             chat_id,
-            "✅ Account unlinked. You'll continue receiving free-tier verdicts (5 stocks/day).\n\n"
-            "Use /link &lt;code&gt; to re-link at any time.",
+            "✅ Web account unlinked. You'll continue receiving free-tier picks (5 stocks/day).\n\n"
+            "To stop all messages: /unsubscribe\n"
+            "To re-link: /link &lt;code&gt; from your Account page",
         )
         log.info("telegram_unlinked_via_command", chat_id=chat_id)
 
     elif command == "/upgrade":
-        app_url = os.getenv("APP_URL", "https://yourapp.com")
+        app_url = os.getenv("APP_URL", "https://indian-stock-analyzer-five.vercel.app")
         await _reply(
             chat_id,
             f"⭐ <b>Upgrade to Pro</b>\n\n"
             f"Pro subscribers receive:\n"
-            f"• All stock verdicts (not just 5)\n"
+            f"• All stock picks (not just 5)\n"
             f"• Morning follow-up notes\n"
             f"• Full web access to all picks\n\n"
-            f"Subscribe at: <a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
+            f"<a href='{app_url}/subscribe'>{app_url}/subscribe</a>",
         )
 
     else:
         await _reply(
             chat_id,
-            "Available commands:\n"
-            "/subscribe — subscribe to daily stock verdicts\n"
-            "/verify &lt;code&gt; — verify your subscription\n"
-            "/unsubscribe — stop receiving messages\n"
-            "/link &lt;code&gt; — link your web account for Pro delivery\n"
-            "/unlink — unlink your web account\n"
-            "/upgrade — learn about Pro subscription",
+            "Available commands:\n\n"
+            "<b>Web account users:</b>\n"
+            "/link &lt;code&gt; — subscribe + link in one step (get code from Account page)\n"
+            "/unlink — remove web account link (keeps free delivery)\n"
+            "/upgrade — learn about Pro subscription\n\n"
+            "<b>Telegram-only users:</b>\n"
+            "/subscribe — sign up for free daily picks\n"
+            "/verify &lt;code&gt; — confirm your subscription\n"
+            "/unsubscribe — stop all messages",
         )

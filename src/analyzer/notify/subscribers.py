@@ -177,6 +177,35 @@ def get_all() -> list[dict[str, Any]]:
     return resp.get("Items", [])  # type: ignore[no-any-return]
 
 
+def ensure_confirmed(chat_id: str, username: str = "") -> bool:
+    """Ensure chat_id has a confirmed subscriber record. Creates one if absent.
+
+    Used when a user links their web account — they proved identity via the link
+    code so no separate subscribe/verify dance is needed.
+
+    Returns True if a new record was created, False if already confirmed.
+    """
+    resp = _table().get_item(Key={"chat_id": str(chat_id)})
+    item = resp.get("Item")
+
+    if item and item.get("status") == "confirmed":
+        return False
+
+    now = _now_iso()
+    _table().put_item(
+        Item={
+            "chat_id": str(chat_id),
+            "status": "confirmed",
+            "confirmed_at": now,
+            "consecutive_failures": 0,
+            "username": username,
+            "created_at": now,
+        }
+    )
+    log.info("subscriber_auto_confirmed_via_link", chat_id=chat_id)
+    return True
+
+
 # ── Migration ─────────────────────────────────────────────────────────────────
 
 
