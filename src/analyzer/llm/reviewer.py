@@ -124,19 +124,17 @@ def call_reviewer(
 
     system_prompt = PromptLibrary.get("reflection")
 
+    entry_line = f"₹{verdict.entry:,}" if verdict.entry else "N/A (HOLD)"
+    stop_line = f"₹{verdict.stop_loss:,}" if verdict.stop_loss else "N/A"
+    target_line = f"₹{verdict.target:,}" if verdict.target else "N/A"
     reviewer_user_message = (
         f"ORIGINAL ANALYSIS DATA:\n{user_message_summary}\n\n"
         f"PRIMARY ANALYST VERDICT:\n"
         f"  Signal:     {verdict.signal}\n"
         f"  Confidence: {verdict.confidence:.0%}\n"
-        f"  Entry:      ₹{verdict.entry:,}"
-        if verdict.entry
-        else f"  Entry:      N/A (HOLD)\n  Stop-loss:  ₹{verdict.stop_loss:,}"
-        if verdict.stop_loss
-        else f"  Stop-loss:  N/A\n  Target:     ₹{verdict.target:,}"
-        if verdict.target
-        else f"  Target:     N/A"
-        f"\n"
+        f"  Entry:      {entry_line}\n"
+        f"  Stop-loss:  {stop_line}\n"
+        f"  Target:     {target_line}\n"
         f"  Watch out:  {verdict.watch_out_for}\n\n"
         f"Current market price: ₹{current_price:,.0f}\n\n"
         f"Review this verdict. Output JSON with fields:\n"

@@ -33,7 +33,10 @@ system: |
 
   ENTRY / STOP / TARGET:
     HOLD: entry = null, stop_loss = null, target = null.
-    BUY/SELL: entry = single integer (mid-point of any range you'd consider), stop 5–8% from entry, target 8–15% from entry.
+    BUY/SELL: entry = single integer (mid-point of any range you'd consider), stop 2–4% from entry, target 3–6% from entry.
+    HORIZON — the target must be realistically reachable within 5 TRADING DAYS. Verdict accuracy
+    is graded at exactly that horizon: direction at the 5th session's close, target against the
+    window's intraday highs/lows. A target needing a >6% move in a week is almost always wrong.
 
   LANGUAGE RULES — strict, no exceptions:
     Rule 1 — NO indicator names. Never write: MACD, RSI, Bollinger, Stochastic, moving average, EMA, SMA, CCI, Williams, crossover.
