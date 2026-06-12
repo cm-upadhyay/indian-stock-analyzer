@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { AccuracyResponseSchema } from "@/lib/schemas"
-import { authRequired, buildAuthHeaders } from "@/lib/server-auth"
 
 export async function GET() {
   const baseUrl = process.env.API_BASE_URL
@@ -8,15 +7,10 @@ export async function GET() {
     return NextResponse.json({ error: "API not configured" }, { status: 500 })
   }
 
-  const authHeaders = await buildAuthHeaders()
-  if (!Object.keys(authHeaders).length && authRequired()) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
-
+  // Accuracy is the public trust page (PRD) — no session required.
   let res: Response
   try {
     res = await fetch(`${baseUrl}/api/v1/accuracy`, {
-      headers: authHeaders,
       next: { revalidate: 3600 },
     })
   } catch {

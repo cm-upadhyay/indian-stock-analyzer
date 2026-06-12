@@ -438,11 +438,12 @@ def morning(
 
 @v1.get("/accuracy", response_model=AccuracyResponse)
 @limiter.limit("60/hour")
-def accuracy(
-    request: Request,
-    _user: dict[str, Any] = Security(_require_user_jwt),  # noqa: B008
-) -> AccuracyResponse:
-    """Running accuracy stats for the last 30 days. Added in Phase 3A (Task 3.2)."""
+def accuracy(request: Request) -> AccuracyResponse:
+    """Running accuracy stats for the last 30 days. Added in Phase 3A (Task 3.2).
+
+    Public by design (PRD): the accuracy page is the trust surface anyone can
+    inspect before signing up — rate-limited per IP instead of JWT-gated.
+    """
     from analyzer.outcomes.tracker import load_accuracy_stats
 
     stats = load_accuracy_stats()
