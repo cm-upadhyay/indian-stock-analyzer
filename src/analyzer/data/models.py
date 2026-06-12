@@ -281,12 +281,14 @@ class OutcomeRecord(BaseModel):
     predicted_target: int | None
     predicted_stop: int | None
 
-    # Filled in the next trading day when we check actual price
+    # Filled in on subsequent trading days as the 5-session window plays out
     outcome_date: str | None = None
     actual_price: float | None = None
     direction_correct: bool | None = None  # None for HOLD (no direction to check)
     target_hit: bool | None = None
     stop_triggered: bool | None = None
+    sessions_observed: int = 0  # trading sessions seen since the verdict
+    final: bool = False  # True once the 5-session window closed — never re-evaluated
 
 
 class MorningNoteRecord(BaseModel):
