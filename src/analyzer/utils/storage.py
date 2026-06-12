@@ -10,6 +10,7 @@ import json
 import os
 from datetime import date
 from pathlib import Path
+from typing import cast
 
 import structlog
 
@@ -187,6 +188,36 @@ class OutcomeStore:
             except Exception as e:
                 log.warning("outcome_store_corrupt", path=str(f), error=str(e))
         return results
+
+    _SUMMARY_KEY = "outcomes/summary.json"
+
+    def save_summary(self, stats: dict) -> None:  # type: ignore[type-arg]
+        """Persist precomputed accuracy stats — the API serves this single object
+        instead of scanning every outcome file per request (the scan exceeded the
+        30s Lambda timeout once record count grew)."""
+        if _backend() == "s3":
+            self._s3_put(self._SUMMARY_KEY, stats)
+        else:
+            path = _LOCAL_ROOT / "outcomes" / "summary.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(stats, indent=2))
+
+    def load_summary(self) -> dict[str, object] | None:
+        if _backend() == "s3":
+            raw = self._s3_get(self._SUMMARY_KEY)
+        else:
+            path = _LOCAL_ROOT / "outcomes" / "summary.json"
+            raw = path.read_text() if path.exists() else None
+        if raw is None:
+            return None
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as e:
+            log.warning("outcome_summary_corrupt", error=str(e))
+            return None
+        if not isinstance(data, dict):
+            return None
+        return cast("dict[str, object]", data)
 
     def _s3_put(self, key: str, data: dict) -> None:  # type: ignore[type-arg]
         import boto3
