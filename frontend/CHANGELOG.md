@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/cm-upadhyay/indian-stock-analyzer/compare/indian-stock-analyzer-frontend-v0.2.0...indian-stock-analyzer-frontend-v0.2.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* outcome tracker 5-day window, public accuracy endpoint ([b54eb97](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/b54eb9773697acf5ad78af2205ba76ed6e47317e))
+* outcome tracker 5-day window, public accuracy endpoint ([7ba6b58](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/7ba6b58eeae841daff73b4213b9bed38e1de9407))
+
 ## [0.2.0](https://github.com/cm-upadhyay/indian-stock-analyzer/compare/indian-stock-analyzer-frontend-v0.1.0...indian-stock-analyzer-frontend-v0.2.0) (2026-06-10)
 
 
