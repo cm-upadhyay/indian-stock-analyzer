@@ -27,7 +27,8 @@
         "aria-allowed-role":         ["error", {"minScore": 1}],
         "uses-rel-preconnect":       ["warn",  {"maxLength": 2}],
         "forced-reflow-insight":     ["off"],
-        "cls-culprits-insight":      ["warn", {"minScore": 0}]
+        "cls-culprits-insight":      ["warn", {"minScore": 0}],
+        "document-latency-insight":  ["warn", {"minScore": 0}]
       }
     },
     "upload": {
