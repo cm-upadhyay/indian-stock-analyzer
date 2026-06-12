@@ -444,9 +444,9 @@ def accuracy(request: Request) -> AccuracyResponse:
     Public by design (PRD): the accuracy page is the trust surface anyone can
     inspect before signing up — rate-limited per IP instead of JWT-gated.
     """
-    from analyzer.outcomes.tracker import load_accuracy_stats
+    from analyzer.outcomes.tracker import get_accuracy_stats
 
-    stats = load_accuracy_stats()
+    stats = get_accuracy_stats()
 
     by_signal_raw = stats.get("by_signal", {})
     by_signal: dict[str, AccuracyBySignal] = {}

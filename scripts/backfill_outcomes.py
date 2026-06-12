@@ -92,6 +92,14 @@ def main() -> int:
     print(f"\n{mode}")
     for k, v in stats.items():
         print(f"  {k}: {v}")
+
+    if args.apply:
+        from analyzer.outcomes.tracker import refresh_accuracy_summary
+
+        summary = refresh_accuracy_summary()
+        print(
+            f"\naccuracy summary refreshed: {summary.get('accuracy_pct')}% over {summary.get('total')}"
+        )
     return 0
 
 

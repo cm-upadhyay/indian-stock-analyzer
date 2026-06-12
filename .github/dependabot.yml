@@ -7,16 +7,20 @@ updates:
       interval: "weekly"
       day: "monday"
     groups:
-      dev-tools:
-        patterns: ["ruff", "mypy", "pytest*", "bandit*", "pip-audit*", "cyclonedx*"]
-        dependency-type: "development"
-    open-pull-requests-limit: 5
+      # One weekly PR for all minor+patch python bumps instead of one PR each
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "python"
-    # Auto-merge patch-level updates when CI is green
-    auto-merge: true
     versioning-strategy: increase-if-necessary
+    ignore:
+      # Majors held back deliberately — revisit one at a time, not via dependabot
+      - dependency-name: "deepeval"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "langfuse"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions version pins
   - package-ecosystem: "github-actions"
@@ -24,11 +28,13 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    groups:
+      actions-all:
+        patterns: ["*"]
+    open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "ci"
-    auto-merge: true
 
   # Frontend Node/npm dependencies
   - package-ecosystem: "npm"
@@ -36,13 +42,24 @@ updates:
     schedule:
       interval: "weekly"
       day: "tuesday"
-    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 3
     labels:
       - "dependencies"
       - "frontend"
-    auto-merge: true
     versioning-strategy: increase-if-necessary
     ignore:
       # eslint-config-next does not support eslint v10 yet; hold at v9
       - dependency-name: "eslint"
         versions: ["10.x", ">=10"]
+      # Majors held back deliberately — migrations need their own branch
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jest-environment-jsdom"
+        update-types: ["version-update:semver-major"]

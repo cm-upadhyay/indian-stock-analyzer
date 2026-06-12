@@ -130,6 +130,15 @@ def pipeline_handler(event: dict, context: object) -> dict:  # type: ignore[type
         )
         log.info("pipeline_email_sent", count=len(email_stocks))
 
+    # Refresh the precomputed accuracy summary the API serves (outcomes were
+    # re-evaluated at the start of each stock's run)
+    try:
+        from analyzer.outcomes.tracker import refresh_accuracy_summary
+
+        refresh_accuracy_summary()
+    except Exception as e:
+        log.error("accuracy_summary_refresh_failed", error=str(e))
+
     log.info("pipeline_lambda_done", completed=len(results))
     flush_sentry()
     flush_langfuse()

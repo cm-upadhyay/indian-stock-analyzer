@@ -210,11 +210,42 @@ def _window_after(history: pd.DataFrame, verdict_date: object) -> pd.DataFrame:
     return window.head(WINDOW_SESSIONS) if len(window) > WINDOW_SESSIONS else window
 
 
-def load_accuracy_stats() -> dict[str, object]:
-    """Compute running accuracy stats across all stored outcomes.
+def get_accuracy_stats() -> dict[str, object]:
+    """Stats for the GET /accuracy endpoint — precomputed summary first.
 
-    Used by the GET /accuracy API endpoint.
-    Returns a dict with total, correct, accuracy_pct, and breakdown by signal.
+    The full scan reads every outcome file of the last 30 days from S3
+    sequentially (~hundreds of GETs) which blows past the 30s API Lambda
+    timeout. The pipeline refreshes the summary once per run; the API serves
+    that single object. Live compute remains only as a fallback for a fresh
+    deployment where no summary exists yet.
+    """
+    summary: dict[str, object] | None = _outcome_store.load_summary()
+    if summary is not None:
+        return summary
+    log.warning("accuracy_summary_missing_falling_back_to_scan")
+    return refresh_accuracy_summary()
+
+
+def refresh_accuracy_summary() -> dict[str, object]:
+    """Recompute accuracy stats from outcome files and persist the summary.
+
+    Called at the end of each 4 PM pipeline run (after outcomes were
+    re-evaluated) and by the backfill script.
+    """
+    stats = load_accuracy_stats()
+    try:
+        _outcome_store.save_summary(stats)
+    except Exception as e:
+        log.error("accuracy_summary_save_failed", error=str(e))
+    return stats
+
+
+def load_accuracy_stats() -> dict[str, object]:
+    """Compute running accuracy stats across all stored outcomes (full scan).
+
+    Slow on S3 — prefer get_accuracy_stats() which serves the precomputed
+    summary. Returns a dict with total, correct, accuracy_pct, and breakdown
+    by signal.
     """
     from datetime import date, timedelta
 

@@ -188,3 +188,28 @@ class TestOutcomeRecordFields:
         assert outcome.predicted_entry == 1000
         assert outcome.outcome_date == OUTCOME_DATE
         assert outcome.actual_price == 1050.0  # session-5 close
+
+
+class TestAccuracySummary:
+    def test_get_stats_prefers_summary(self, monkeypatch, tmp_path):  # type: ignore[no-untyped-def]
+        from analyzer.outcomes import tracker
+        from analyzer.utils import storage
+
+        monkeypatch.setattr(storage, "_LOCAL_ROOT", tmp_path)
+        store = storage.OutcomeStore()
+        store.save_summary({"total": 5, "accuracy_pct": 60.0})
+        monkeypatch.setattr(tracker, "_outcome_store", store)
+        assert tracker.get_accuracy_stats() == {"total": 5, "accuracy_pct": 60.0}
+
+    def test_refresh_writes_summary(self, monkeypatch, tmp_path):  # type: ignore[no-untyped-def]
+        from analyzer.outcomes import tracker
+        from analyzer.utils import storage
+
+        monkeypatch.setattr(storage, "_LOCAL_ROOT", tmp_path)
+        store = storage.OutcomeStore()
+        monkeypatch.setattr(tracker, "_outcome_store", store)
+        stats = tracker.refresh_accuracy_summary()
+        assert store.load_summary() == stats
+        # fallback path also works when summary missing
+        (tmp_path / "outcomes" / "summary.json").unlink()
+        assert tracker.get_accuracy_stats()["total"] == stats["total"]
