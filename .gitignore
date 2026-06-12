@@ -25,6 +25,9 @@ htmlcov/
 # docs (local only for now)
 docs/
 
+# interview prep material from another project — never commit
+reference doc/
+
 # IDE
 .vscode/settings.json
 .idea/
