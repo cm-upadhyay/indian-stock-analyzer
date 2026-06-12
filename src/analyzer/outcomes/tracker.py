@@ -27,7 +27,6 @@ from __future__ import annotations
 import pandas as pd
 import structlog
 
-from analyzer.adapters.yfinance import get_price_history
 from analyzer.data.models import OutcomeRecord, StockVerdict
 from analyzer.utils.storage import AnalysisStore, OutcomeStore
 
@@ -58,6 +57,10 @@ def check_and_store_outcome(symbol: str, current_price: float) -> OutcomeRecord 
     Returns None if no past verdict exists (first time we've analysed this stock).
     """
     from datetime import date, timedelta
+
+    # Lazy import — yfinance takes 20s+ to import on the 512MB API Lambda, and the
+    # API only ever calls get_accuracy_stats(); only the pipeline reaches this path.
+    from analyzer.adapters.yfinance import get_price_history
 
     run_date = date.today()
     history = get_price_history(symbol, period="1mo")
