@@ -107,8 +107,9 @@ module "lambda_api" {
   function_name = "analyzer-api"
   image_uri     = "${local.ecr_base}/indian-stock-analyzer:latest"
   role_arn      = module.iam.role_arn
-  memory_size   = 512
-  timeout       = 30
+  # 1024 = 2x CPU vs 512: cold-start init was exceeding Lambda's 10s init window
+  memory_size = 1024
+  timeout     = 30
 }
 
 module "lambda_pipeline" {
