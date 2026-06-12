@@ -32,11 +32,13 @@ docker tag "${API_REPO}:latest" "${ECR_BASE}/${API_REPO}:latest"
 docker push "${ECR_BASE}/${API_REPO}:latest"
 
 echo "==> Updating API Lambda function"
+# --query: the full response dumps every env var (secrets) to the terminal
 aws lambda update-function-code \
   --function-name analyzer-api \
   --image-uri "${ECR_BASE}/${API_REPO}:latest" \
   --region "${REGION}" \
-  --no-cli-pager
+  --no-cli-pager \
+  --query "{State: State, LastUpdateStatus: LastUpdateStatus, CodeSha256: CodeSha256}"
 
 # ── Pipeline image (ECS Fargate) ──────────────────────────────────────────────
 echo ""
