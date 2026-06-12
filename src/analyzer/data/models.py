@@ -27,6 +27,7 @@ class StockData(BaseModel):
     cashflow: pd.DataFrame | None
     balance_sheet: pd.DataFrame | None
     financials: pd.DataFrame | None
+    recommendations: pd.DataFrame | None = None  # analyst recs history (Analyst_Direction vote)
 
     @model_serializer(mode="plain")
     def _serialize(self) -> dict[str, object]:
@@ -47,6 +48,7 @@ class StockData(BaseModel):
             "cashflow": _df_summary(self.cashflow),
             "balance_sheet": _df_summary(self.balance_sheet),
             "financials": _df_summary(self.financials),
+            "recommendations": _df_summary(self.recommendations),
         }
 
 

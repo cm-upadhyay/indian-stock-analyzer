@@ -140,11 +140,7 @@ def compute_fundamental(stock: StockData) -> FundamentalSignals:
             interest_coverage = abs(ebit / intexp)
 
     # ── Analyst direction ─────────────────────────────────────────────────────
-    # Import here to avoid circular — yfinance adapter call is NOT here; caller passes recs
-    # Recommendations come from stock.info flow; we'd need a separate adapter call.
-    # For now: derive from info if available, otherwise NEUTRAL.
-    analyst_direction_vote = "NEUTRAL"
-    analyst_direction_label = "stable"
+    analyst_direction_vote, analyst_direction_label = _analyst_direction(stock.recommendations)
 
     # ── Votes ─────────────────────────────────────────────────────────────────
     votes: dict[str, str] = {

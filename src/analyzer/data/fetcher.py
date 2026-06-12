@@ -47,6 +47,8 @@ def fetch_stock_data(symbol: str) -> StockData:
     if not fin.empty:
         financials = fin
 
+    recommendations = yf_adapter.get_recommendations(symbol)
+
     return StockData(
         symbol=symbol,
         company_name=_company_name(symbol, info),
@@ -59,6 +61,7 @@ def fetch_stock_data(symbol: str) -> StockData:
         cashflow=cashflow,
         balance_sheet=balance_sheet,
         financials=financials,
+        recommendations=recommendations,
     )
 
 
