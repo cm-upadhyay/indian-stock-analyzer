@@ -113,7 +113,7 @@ jobs:
             --ignore-vuln CVE-2026-47101      `# litellm` \
             --ignore-vuln GHSA-4xgf-cpjx-pc3j `# pydantic-setting` \
             --ignore-vuln PYSEC-2026-249      `# starlette` \
-            --ignore-vuln PYSEC-2026-248      `# starlette`
+            --ignore-vuln PYSEC-2026-248      `# starlette` \
             --ignore-package cryptography
 
   secrets:
