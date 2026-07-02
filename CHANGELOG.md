@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.5.1](https://github.com/cm-upadhyay/indian-stock-analyzer/compare/indian-stock-analyzer-v0.5.0...indian-stock-analyzer-v0.5.1) (2026-06-12)
+
+
+### Bug Fixes
+
+* API Lambda memory 1024MB ([896a6ec](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/896a6ecf25466d51bc2c98837a15303ea0f5caa8))
+* API Lambda memory 1024MB ([b20490a](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/b20490a6eb8d8dbf7492a486f69dd9addce9783c))
+* deploy.sh ([a8ecccc](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/a8ecccc5331536b518d01a4d0a5e3b77dbd203c6))
+* deploy.sh no longer prints Lambda env secrets ([f368c5d](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/f368c5d6f18ba3e70a807da4d001cba28607fc96))
+* lazy yfinance import — /accuracy cold start exceeded Lambda timeout ([203c137](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/203c13786befacc2e5447deb63c81924c78e03a6))
+* lazy yfinance import in tracker ([9e32e02](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/9e32e021a3f5b782efbf5d4957553dec655bdc8d))
+* lighthouse document-latency-insight as warn ([b165370](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/b165370c2a57efc7a0927ed47627bbd0acf70cac))
+* lighthouse document-latency-insight as warn ([e6420a9](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/e6420a9dd2aae25a9c33873c9f2e63fe21a8491f))
+* outcome tracker 5-day window, public accuracy endpoint ([b54eb97](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/b54eb9773697acf5ad78af2205ba76ed6e47317e))
+* outcome tracker 5-day window, public accuracy endpoint ([7ba6b58](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/7ba6b58eeae841daff73b4213b9bed38e1de9407))
+* precompute accuracy summary to stop /accuracy Lambda timeouts; dependabot grouping ([a655984](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/a6559849e19dece6c284f71614c970ffbc787daa))
+* reviewer prompt truncation, analyst direction vote, 5-day target horizon ([7b03af3](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/7b03af3393e8e4d12b2c5b08722a37f56311a191))
+* reviewer prompt truncation, wire analyst direction vote, 5-day target horizon ([6b8df7b](https://github.com/cm-upadhyay/indian-stock-analyzer/commit/6b8df7b57af939cd49dec8e51b69b4d7dece3373))
+
 ## [0.5.0](https://github.com/cm-upadhyay/indian-stock-analyzer/compare/indian-stock-analyzer-v0.4.0...indian-stock-analyzer-v0.5.0) (2026-06-10)
 
 
