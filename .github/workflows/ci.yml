@@ -106,12 +106,12 @@ jobs:
             --ignore-vuln CVE-2026-44843 \
             --ignore-vuln CVE-2026-40217 \
             --ignore-vuln CVE-2026-44431 \
-            --ignore-vuln CVE-2026-44432
+            --ignore-vuln CVE-2026-44432 \
             --ignore-vuln GHSA-f4xh-w4cj-qxq8 `# langsmith` \
             --ignore-vuln PYSEC-2026-388      `# litellm` \
             --ignore-vuln CVE-2026-47102      `# litellm` \
             --ignore-vuln CVE-2026-47101      `# litellm` \
-            --ignore-vuln GHSA-4xgf-cpjx-pc3j `# pydantic-settings` \
+            --ignore-vuln GHSA-4xgf-cpjx-pc3j `# pydantic-setting` \
             --ignore-vuln PYSEC-2026-249      `# starlette` \
             --ignore-vuln PYSEC-2026-248      `# starlette`
 
